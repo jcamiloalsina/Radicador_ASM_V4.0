@@ -208,14 +208,13 @@ export default function MutacionesResoluciones() {
   // Estado para M1
   const [m1Data, setM1Data] = useState({
     municipio: '',
-    predio: null,
+    predios: [], // Array de { predio, propietarios_anteriores, propietarios_nuevos }
     numero_resolucion: '',
     fecha_resolucion: '',
     radicado_peticion: '',
-    propietarios_anteriores: [],
-    propietarios_nuevos: [],
-    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
+    texto_considerando: ''
   });
+  const [m1PredioExpandido, setM1PredioExpandido] = useState(null);
   const [searchPredioM1, setSearchPredioM1] = useState('');
   const [searchResultsM1, setSearchResultsM1] = useState([]);
   const [searchingPrediosM1, setSearchingPrediosM1] = useState(false);
@@ -363,22 +362,12 @@ export default function MutacionesResoluciones() {
   const [complementacionData, setComplementacionData] = useState({
     municipio: '',
     radicado: '',
-    predio: null,
-    area_terreno_nueva: 0,
-    area_construida_nueva: 0,
-    avaluo_nuevo: 0,
-    // Campos editables en Complementación
-    matricula_nueva: '',
-    direccion_nueva: '',
-    destino_nuevo: '',
-    numero_documento_nuevo: '',
-    // Propietarios (como M1)
-    propietarios_anteriores: [],
-    propietarios_nuevos: [],
+    predios: [], // Array de { predio, propietarios_anteriores, propietarios_nuevos, area_terreno_nueva, area_construida_nueva, avaluo_nuevo, matricula_nueva, direccion_nueva, destino_nuevo }
     documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
     observaciones: '',
     texto_considerando: ''
   });
+  const [compPredioExpandido, setCompPredioExpandido] = useState(null);
   const [searchPredioComplementacion, setSearchPredioComplementacion] = useState('');
   const [searchResultsComplementacion, setSearchResultsComplementacion] = useState([]);
   const [searchingPrediosComplementacion, setSearchingPrediosComplementacion] = useState(false);
@@ -1451,10 +1440,16 @@ export default function MutacionesResoluciones() {
     }
   };
 
-  // Seleccionar predio para M1
+  // Seleccionar predio para M1 (agrega al array)
   const seleccionarPredioM1 = async (predio) => {
-    setM1Data(prev => ({
-      ...prev,
+    // Verificar que no esté ya agregado
+    const yaExiste = m1Data.predios.some(p => p.predio.id === predio.id);
+    if (yaExiste) {
+      toast.warning('Este predio ya fue agregado');
+      return;
+    }
+
+    const nuevoPredio = {
       predio: predio,
       propietarios_anteriores: predio.propietarios || [{
         nombre_propietario: predio.nombre_propietario || '',
@@ -1462,15 +1457,38 @@ export default function MutacionesResoluciones() {
         numero_documento: predio.numero_documento || ''
       }],
       propietarios_nuevos: []
+    };
+
+    setM1Data(prev => ({
+      ...prev,
+      predios: [...prev.predios, nuevoPredio]
     }));
+    setM1PredioExpandido(m1Data.predios.length); // Expandir el nuevo
     setSearchResultsM1([]);
     setSearchPredioM1('');
-    
-    // Cargar siguiente número de resolución
-    if (predio.codigo_predial_nacional) {
+
+    // Cargar siguiente número de resolución (solo si es el primer predio)
+    if (m1Data.predios.length === 0 && predio.codigo_predial_nacional) {
       const codigoMunicipio = predio.codigo_predial_nacional.substring(0, 5);
       await cargarSiguienteNumeroResolucion(codigoMunicipio);
     }
+  };
+
+  // Eliminar un predio del array M1
+  const eliminarPredioM1 = (index) => {
+    setM1Data(prev => ({
+      ...prev,
+      predios: prev.predios.filter((_, i) => i !== index)
+    }));
+    if (m1PredioExpandido === index) setM1PredioExpandido(null);
+  };
+
+  // Actualizar propietarios nuevos de un predio específico en M1
+  const actualizarPropietariosNuevosM1 = (index, propietarios) => {
+    setM1Data(prev => ({
+      ...prev,
+      predios: prev.predios.map((p, i) => i === index ? { ...p, propietarios_nuevos: propietarios } : p)
+    }));
   };
 
   // Cargar siguiente número de resolución
@@ -1712,8 +1730,8 @@ export default function MutacionesResoluciones() {
   // Generar resolución M1
   const generarResolucionM1 = async () => {
     // Validaciones
-    if (!m1Data.predio) {
-      toast.error('Seleccione un predio');
+    if (m1Data.predios.length === 0) {
+      toast.error('Agregue al menos un predio');
       return;
     }
     if (!m1Data.numero_resolucion) {
@@ -1724,28 +1742,43 @@ export default function MutacionesResoluciones() {
       toast.error('El número de radicado es obligatorio');
       return;
     }
-    if (m1Data.propietarios_nuevos.length === 0) {
-      toast.error('Agregue al menos un propietario nuevo');
-      return;
+    // Validar que cada predio tenga propietarios nuevos
+    for (let i = 0; i < m1Data.predios.length; i++) {
+      if (m1Data.predios[i].propietarios_nuevos.length === 0) {
+        const cod = m1Data.predios[i].predio.codigo_predial_nacional || `Predio ${i + 1}`;
+        toast.error(`Agregue propietarios nuevos al predio: ${cod}`);
+        setM1PredioExpandido(i);
+        return;
+      }
     }
-    
+
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
+      const primerPredio = m1Data.predios[0].predio;
+
+      // Construir predios_m1 array
+      const predios_m1 = m1Data.predios.map(p => ({
+        predio_id: p.predio.id,
+        propietarios_anteriores: p.propietarios_anteriores,
+        propietarios_nuevos: p.propietarios_nuevos
+      }));
+
       const response = await axios.post(`${API}/resoluciones/generar-manual`, {
-        predio_id: m1Data.predio.id,
+        predio_id: primerPredio.id,
         tipo_mutacion: 'M1',
         numero_resolucion: m1Data.numero_resolucion,
         fecha_resolucion: m1Data.fecha_resolucion || new Date().toLocaleDateString('es-CO'),
         radicado_peticion: m1Data.radicado_peticion || null,
-        propietarios_anteriores: m1Data.propietarios_anteriores,
-        propietarios_nuevos: m1Data.propietarios_nuevos,
+        propietarios_anteriores: m1Data.predios[0].propietarios_anteriores,
+        propietarios_nuevos: m1Data.predios[0].propietarios_nuevos,
         datos_predio: {
-          ...m1Data.predio,
-          propietarios: m1Data.propietarios_nuevos
+          ...primerPredio,
+          propietarios: m1Data.predios[0].propietarios_nuevos
         },
         texto_considerando: m1Data.texto_considerando || '',
-        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
+        predios_m1: predios_m1.length > 0 ? predios_m1 : undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1787,14 +1820,13 @@ export default function MutacionesResoluciones() {
   const resetFormularioM1 = () => {
     setM1Data({
       municipio: '',
-      predio: null,
+      predios: [],
       numero_resolucion: '',
       fecha_resolucion: '',
       radicado_peticion: '',
-      propietarios_anteriores: [],
-      propietarios_nuevos: [],
       texto_considerando: ''
     });
+    setM1PredioExpandido(null);
     setSearchPredioM1('');
     setSearchResultsM1([]);
     setRadicadosDisponibles([]);
@@ -4047,18 +4079,32 @@ export default function MutacionesResoluciones() {
 
   // Generar resolución de Complementación de Información
   const generarResolucionComplementacion = async () => {
-    if (!complementacionData.predio) {
-      toast.error('Debe seleccionar un predio');
+    if (complementacionData.predios.length === 0) {
+      toast.error('Debe agregar al menos un predio');
       return;
     }
 
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
-      const predio = complementacionData.predio;
+      const primerItem = complementacionData.predios[0];
+      const predio = primerItem.predio;
       const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
       const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
       const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+
+      // Construir predios_complementacion array
+      const predios_complementacion = complementacionData.predios.map(item => ({
+        predio_id: item.predio.id,
+        propietarios_anteriores: item.propietarios_anteriores,
+        propietarios_nuevos: item.propietarios_nuevos,
+        area_terreno_nueva: item.area_terreno_nueva,
+        area_construida_nueva: item.area_construida_nueva,
+        avaluo_nuevo: item.avaluo_nuevo,
+        matricula_nueva: item.matricula_nueva,
+        direccion_nueva: item.direccion_nueva,
+        destino_nuevo: item.destino_nuevo,
+      }));
 
       const payload = {
         tipo: 'COMPLEMENTACION',
@@ -4071,21 +4117,22 @@ export default function MutacionesResoluciones() {
           nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
           documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
         },
-        propietarios_anteriores: complementacionData.propietarios_anteriores,
-        propietarios_nuevos: complementacionData.propietarios_nuevos,
-        matricula_nueva: complementacionData.matricula_nueva,
-        direccion_nueva: complementacionData.direccion_nueva,
-        destino_nuevo: complementacionData.destino_nuevo,
+        propietarios_anteriores: primerItem.propietarios_anteriores,
+        propietarios_nuevos: primerItem.propietarios_nuevos,
+        matricula_nueva: primerItem.matricula_nueva,
+        direccion_nueva: primerItem.direccion_nueva,
+        destino_nuevo: primerItem.destino_nuevo,
         area_terreno_anterior: areaTerreno,
         area_construida_anterior: areaConstruida,
         avaluo_anterior: avaluo,
-        area_terreno_nueva: complementacionData.area_terreno_nueva,
-        area_construida_nueva: complementacionData.area_construida_nueva,
-        avaluo_nuevo: complementacionData.avaluo_nuevo,
+        area_terreno_nueva: primerItem.area_terreno_nueva,
+        area_construida_nueva: primerItem.area_construida_nueva,
+        avaluo_nuevo: primerItem.avaluo_nuevo,
         documentos_soporte: complementacionData.documentos_soporte,
         observaciones: complementacionData.observaciones,
         texto_considerando: complementacionData.texto_considerando || '',
-        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
+        predios_complementacion: predios_complementacion.length > 0 ? predios_complementacion : undefined
       };
 
       if (puedeAprobar) payload.skip_auto_approve = true;
@@ -4145,20 +4192,12 @@ export default function MutacionesResoluciones() {
     setComplementacionData({
       municipio: '',
       radicado: '',
-      predio: null,
-      area_terreno_nueva: 0,
-      area_construida_nueva: 0,
-      avaluo_nuevo: 0,
-      matricula_nueva: '',
-      direccion_nueva: '',
-      destino_nuevo: '',
-      numero_documento_nuevo: '',
-      propietarios_anteriores: [],
-      propietarios_nuevos: [],
+      predios: [],
       documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
       observaciones: '',
       texto_considerando: ''
     });
+    setCompPredioExpandido(null);
     setSearchPredioComplementacion('');
     setSearchResultsComplementacion([]);
     setRadicadosDisponiblesComplementacion([]);
@@ -6931,7 +6970,7 @@ export default function MutacionesResoluciones() {
                 key={mun.codigo}
                 className="p-2 hover:bg-slate-100 cursor-pointer"
                 onClick={() => {
-                  setComplementacionData(prev => ({ ...prev, municipio: mun.nombre, predio: null }));
+                  setComplementacionData(prev => ({ ...prev, municipio: mun.nombre, predios: [] }));
                   setShowMunicipioDropdownComplementacion(false);
                   setSearchPredioComplementacion('');
                   setSearchResultsComplementacion([]);
@@ -7023,6 +7062,11 @@ export default function MutacionesResoluciones() {
                   key={idx}
                   className="p-2 hover:bg-slate-100 cursor-pointer border-b last:border-b-0"
                   onClick={() => {
+                    // Verificar que no esté ya agregado
+                    if (complementacionData.predios.some(p => p.predio.id === predio.id)) {
+                      toast.warning('Este predio ya fue agregado');
+                      return;
+                    }
                     const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
                     const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
                     const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
@@ -7030,29 +7074,31 @@ export default function MutacionesResoluciones() {
                     const direccion = predio.direccion || predio.r1_registros?.[0]?.direccion || '';
                     const destino = predio.destino_economico || predio.r1_registros?.[0]?.destino_economico || '';
 
-                    // Cargar propietarios del predio
                     const propsAnteriores = (predio.propietarios || []).map(p => ({
                       nombre_propietario: p.nombre_propietario || p.nombre || '',
                       tipo_documento: p.tipo_documento || 'C',
                       numero_documento: p.numero_documento || '',
                       estado_civil: p.estado_civil || ''
                     }));
-                    // Clonar propietarios anteriores como nuevos para edición
                     const propsNuevos = propsAnteriores.map(p => ({ ...p }));
 
-                    setComplementacionData(prev => ({
-                      ...prev,
-                      predio: predio,
+                    const nuevoPredio = {
+                      predio,
+                      propietarios_anteriores: propsAnteriores,
+                      propietarios_nuevos: propsNuevos,
                       area_terreno_nueva: areaTerreno,
                       area_construida_nueva: areaConstruida,
                       avaluo_nuevo: avaluo,
                       matricula_nueva: matricula,
                       direccion_nueva: direccion,
                       destino_nuevo: destino,
-                      numero_documento_nuevo: '',
-                      propietarios_anteriores: propsAnteriores,
-                      propietarios_nuevos: propsNuevos
+                    };
+
+                    setComplementacionData(prev => ({
+                      ...prev,
+                      predios: [...prev.predios, nuevoPredio]
                     }));
+                    setCompPredioExpandido(complementacionData.predios.length);
                     setSearchPredioComplementacion('');
                     setSearchResultsComplementacion([]);
                   }}
@@ -7067,277 +7113,129 @@ export default function MutacionesResoluciones() {
         </div>
       )}
 
-      {/* Predio Seleccionado */}
-      {complementacionData.predio && (
+      {/* Predios Agregados - Multi-predio Complementación */}
+      {complementacionData.predios.length > 0 && (
         <>
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-sm">Predio Seleccionado</CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setComplementacionData(prev => ({ ...prev, predio: null }))}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-slate-500">Código:</span>
-                  <p className="font-medium">{complementacionData.predio.codigo_predial_nacional}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Dirección:</span>
-                  <p className="font-medium">{complementacionData.predio.direccion || 'Sin dirección'}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Área Terreno:</span>
-                  <p className="font-medium">{complementacionData.predio.area_terreno || complementacionData.predio.r1_registros?.[0]?.area_terreno || 0} m²</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Área Construida:</span>
-                  <p className="font-medium">{complementacionData.predio.area_construida || complementacionData.predio.r1_registros?.[0]?.area_construida || 0} m²</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Propietarios Anteriores (CANCELAR) */}
-          <Card className="border-red-200 bg-red-50/30">
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm flex items-center gap-2 text-red-800">
-                <X className="w-4 h-4" />
-                Propietarios Actuales - CANCELAR ({complementacionData.propietarios_anteriores.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2">
-              {complementacionData.propietarios_anteriores.length === 0 ? (
-                <p className="text-center text-slate-500 py-2 text-sm">Sin propietarios registrados</p>
-              ) : (
-                complementacionData.propietarios_anteriores.map((prop, idx) => (
-                  <div key={idx} className="bg-white p-3 rounded-lg border border-red-200 mb-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-2">
-                        <Label className="text-xs">Nombre</Label>
-                        <Input value={prop.nombre_propietario} readOnly className="bg-slate-50" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Documento</Label>
-                        <Input value={`${prop.tipo_documento === 'C' ? 'CC' : prop.tipo_documento} ${prop.numero_documento}`} readOnly className="bg-slate-50" />
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Propietarios Nuevos (INSCRIBIR) */}
-          <Card className="border-emerald-200 bg-emerald-50/30">
-            <CardHeader className="py-3">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
-                  <Check className="w-4 h-4" />
-                  Propietarios a INSCRIBIR ({complementacionData.propietarios_nuevos.length})
-                </CardTitle>
-                <Button size="sm" onClick={() => {
-                  setComplementacionData(prev => ({
-                    ...prev,
-                    propietarios_nuevos: [...prev.propietarios_nuevos, {
-                      nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
-                    }]
-                  }));
-                }} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Plus className="w-4 h-4 mr-1" /> Agregar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="py-2">
-              {complementacionData.propietarios_nuevos.length === 0 ? (
-                <p className="text-center text-slate-500 py-4">
-                  Haga clic en "Agregar" para añadir los nuevos propietarios
-                </p>
-              ) : (
-                complementacionData.propietarios_nuevos.map((prop, idx) => (
-                  <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200 mb-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <Badge className="bg-emerald-100 text-emerald-800">Propietario {idx + 1}</Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setComplementacionData(prev => ({
-                            ...prev,
-                            propietarios_nuevos: prev.propietarios_nuevos.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        className="text-red-600 h-6"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="col-span-2">
-                        <Label className="text-xs">Nombre Completo *</Label>
-                        <Input
-                          value={prop.nombre_propietario}
-                          onChange={(e) => {
-                            const newProps = [...complementacionData.propietarios_nuevos];
-                            newProps[idx] = { ...newProps[idx], nombre_propietario: e.target.value.toUpperCase() };
-                            setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
-                          }}
-                          placeholder="NOMBRE COMPLETO"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Tipo Doc</Label>
-                        <Select
-                          value={prop.tipo_documento}
-                          onValueChange={(v) => {
-                            const newProps = [...complementacionData.propietarios_nuevos];
-                            newProps[idx] = { ...newProps[idx], tipo_documento: v };
-                            setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
-                          }}
-                        >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="C">CC</SelectItem>
-                            <SelectItem value="N">NIT</SelectItem>
-                            <SelectItem value="T">TI</SelectItem>
-                            <SelectItem value="E">CE</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Número *</Label>
-                        <Input
-                          value={prop.numero_documento}
-                          onChange={(e) => {
-                            const newProps = [...complementacionData.propietarios_nuevos];
-                            newProps[idx] = { ...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12) };
-                            setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
-                          }}
-                          onBlur={(e) => {
-                            if (e.target.value) {
-                              const newProps = [...complementacionData.propietarios_nuevos];
-                              newProps[idx] = { ...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0') };
-                              setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
-                            }
-                          }}
-                          placeholder="12345678"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <Label className="text-xs">Estado Civil</Label>
-                      <RadioGroup
-                        value={prop.estado_civil || ''}
-                        onValueChange={(v) => {
-                          const newProps = [...complementacionData.propietarios_nuevos];
-                          newProps[idx] = { ...newProps[idx], estado_civil: v };
-                          setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
-                        }}
-                        className="flex flex-wrap gap-3 mt-1"
-                      >
-                        <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`comp_estado_${idx}_sin`} /><Label htmlFor={`comp_estado_${idx}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
-                        <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`comp_estado_${idx}_sol`} /><Label htmlFor={`comp_estado_${idx}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
-                        <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`comp_estado_${idx}_cas`} /><Label htmlFor={`comp_estado_${idx}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
-                        <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`comp_estado_${idx}_viu`} /><Label htmlFor={`comp_estado_${idx}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
-                        <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`comp_estado_${idx}_uni`} /><Label htmlFor={`comp_estado_${idx}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
-                      </RadioGroup>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Información del Predio a Complementar */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Edit className="w-4 h-4 text-slate-600" />
-                Datos del Predio a Complementar
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Campos Editables */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Matrícula Inmobiliaria</Label>
-                  <Input
-                    value={complementacionData.matricula_nueva}
-                    onChange={(e) => setComplementacionData(prev => ({ ...prev, matricula_nueva: e.target.value }))}
-                    placeholder="Ej: 270-12345"
-                    data-testid="complementacion-matricula"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Destino Económico</Label>
-                  <select
-                    className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    value={complementacionData.destino_nuevo}
-                    onChange={(e) => setComplementacionData(prev => ({ ...prev, destino_nuevo: e.target.value }))}
-                    data-testid="complementacion-destino"
+          <div className="space-y-2">
+            <Badge className="bg-blue-100 text-blue-800">{complementacionData.predios.length} predio(s) agregado(s)</Badge>
+            {complementacionData.predios.map((item, idx) => {
+              const updateCompPredio = (field, value) => {
+                setComplementacionData(prev => ({
+                  ...prev,
+                  predios: prev.predios.map((p, i) => i === idx ? { ...p, [field]: value } : p)
+                }));
+              };
+              return (
+                <div key={item.predio.id} className="bg-white rounded-lg border border-blue-300">
+                  <div
+                    className="p-3 flex justify-between items-center cursor-pointer hover:bg-blue-50/50"
+                    onClick={() => setCompPredioExpandido(compPredioExpandido === idx ? null : idx)}
                   >
-                    <option value="">Sin cambio</option>
-                    {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
-                      <option key={d.value} value={d.value}>{d.label}</option>
-                    ))}
-                  </select>
+                    <div className="flex items-center gap-2">
+                      <ChevronDown className={`w-4 h-4 transition-transform ${compPredioExpandido === idx ? 'rotate-180' : ''}`} />
+                      <div>
+                        <p className="font-bold text-sm">{item.predio.codigo_predial_nacional}</p>
+                        <p className="text-xs text-slate-600">{item.predio.direccion} | Props nuevos: {item.propietarios_nuevos.length}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={(e) => {
+                      e.stopPropagation();
+                      setComplementacionData(prev => ({ ...prev, predios: prev.predios.filter((_, i) => i !== idx) }));
+                      if (compPredioExpandido === idx) setCompPredioExpandido(null);
+                    }} className="text-red-600 h-7">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {compPredioExpandido === idx && (
+                    <div className="border-t p-3 space-y-3">
+                      {/* Propietarios anteriores */}
+                      <div>
+                        <p className="text-xs font-semibold text-red-700 mb-1">Propietarios a CANCELAR ({item.propietarios_anteriores.length})</p>
+                        {item.propietarios_anteriores.map((prop, pidx) => (
+                          <div key={pidx} className="bg-red-50 p-2 rounded border border-red-200 mb-1 text-xs">
+                            {prop.nombre_propietario} - {prop.tipo_documento} {prop.numero_documento}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Propietarios nuevos */}
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <p className="text-xs font-semibold text-emerald-700">Propietarios a INSCRIBIR ({item.propietarios_nuevos.length})</p>
+                          <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => {
+                            updateCompPredio('propietarios_nuevos', [...item.propietarios_nuevos, { nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
+                          }}>
+                            <Plus className="w-3 h-3 mr-1" /> Agregar
+                          </Button>
+                        </div>
+                        {item.propietarios_nuevos.map((prop, pidx) => (
+                          <div key={pidx} className="bg-emerald-50 p-2 rounded border border-emerald-200 mb-1">
+                            <div className="flex justify-between items-center mb-1">
+                              <Badge className="bg-emerald-100 text-emerald-800 text-xs">Propietario {pidx + 1}</Badge>
+                              <Button variant="ghost" size="sm" className="h-5 text-red-600" onClick={() => {
+                                updateCompPredio('propietarios_nuevos', item.propietarios_nuevos.filter((_, i) => i !== pidx));
+                              }}><Trash2 className="w-3 h-3" /></Button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1">
+                              <div className="col-span-2">
+                                <Input className="h-7 text-xs" placeholder="NOMBRE" value={prop.nombre_propietario}
+                                  onChange={(e) => { const u = [...item.propietarios_nuevos]; u[pidx] = { ...u[pidx], nombre_propietario: e.target.value.toUpperCase() }; updateCompPredio('propietarios_nuevos', u); }} />
+                              </div>
+                              <div>
+                                <Select value={prop.tipo_documento} onValueChange={(v) => { const u = [...item.propietarios_nuevos]; u[pidx] = { ...u[pidx], tipo_documento: v }; updateCompPredio('propietarios_nuevos', u); }}>
+                                  <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectItem value="C">CC</SelectItem><SelectItem value="N">NIT</SelectItem><SelectItem value="T">TI</SelectItem><SelectItem value="E">CE</SelectItem></SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Input className="h-7 text-xs" placeholder="Doc" value={prop.numero_documento}
+                                  onChange={(e) => { const u = [...item.propietarios_nuevos]; u[pidx] = { ...u[pidx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12) }; updateCompPredio('propietarios_nuevos', u); }}
+                                  onBlur={(e) => { if (e.target.value) { const u = [...item.propietarios_nuevos]; u[pidx] = { ...u[pidx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0') }; updateCompPredio('propietarios_nuevos', u); } }} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Datos del predio a complementar */}
+                      <div className="border-t pt-2">
+                        <p className="text-xs font-semibold text-slate-700 mb-2">Datos a Complementar</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Matrícula Inmobiliaria</Label>
+                            <Input className="h-7 text-xs" value={item.matricula_nueva} onChange={(e) => updateCompPredio('matricula_nueva', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Destino Económico</Label>
+                            <select className="w-full h-7 rounded-md border border-slate-300 bg-white px-2 text-xs" value={item.destino_nuevo} onChange={(e) => updateCompPredio('destino_nuevo', e.target.value)}>
+                              <option value="">Sin cambio</option>
+                              {DESTINOS_ECONOMICOS_OPTIONS.map(d => (<option key={d.value} value={d.value}>{d.label}</option>))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <Label className="text-xs">Dirección</Label>
+                          <Input className="h-7 text-xs" value={item.direccion_nueva} onChange={(e) => updateCompPredio('direccion_nueva', e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                          <div>
+                            <Label className="text-xs text-slate-400">Área Terreno</Label>
+                            <Input className="h-7 text-xs bg-slate-100" value={item.area_terreno_nueva} disabled />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-400">Área Construida</Label>
+                            <Input className="h-7 text-xs bg-slate-100" value={item.area_construida_nueva} disabled />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-400">Avalúo</Label>
+                            <Input className="h-7 text-xs bg-slate-100" value={item.avaluo_nuevo} disabled />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div>
-                <Label className="text-xs">Dirección</Label>
-                <Input
-                  value={complementacionData.direccion_nueva}
-                  onChange={(e) => setComplementacionData(prev => ({ ...prev, direccion_nueva: e.target.value }))}
-                  placeholder="Dirección del predio"
-                  data-testid="complementacion-direccion"
-                />
-              </div>
-
-              {/* Campos NO Editables - Áreas y Avalúo */}
-              <div className="border-t pt-4 mt-4">
-                <p className="text-xs text-amber-600 mb-3 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  Las áreas y el avalúo no son editables en Complementación. Para modificar áreas use Rectificación de Área.
-                </p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label className="text-xs text-slate-400">Área Terreno (m²)</Label>
-                    <Input
-                      type="number"
-                      value={complementacionData.area_terreno_nueva}
-                      disabled
-                      className="bg-slate-100 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-400">Área Construida (m²)</Label>
-                    <Input
-                      type="number"
-                      value={complementacionData.area_construida_nueva}
-                      disabled
-                      className="bg-slate-100 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-400">Avalúo ($)</Label>
-                    <Input
-                      type="number"
-                      value={complementacionData.avaluo_nuevo}
-                      disabled
-                      className="bg-slate-100 cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              );
+            })}
+          </div>
 
           {/* Documentos de Soporte */}
           <Card>
@@ -9613,35 +9511,132 @@ export default function MutacionesResoluciones() {
                     </div>
                   )}
                   
-                  {/* Predio seleccionado */}
-                  {m1Data.predio && (
-                    <div className="bg-white p-4 rounded-lg border border-blue-300">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <Badge className="bg-blue-100 text-blue-800">Predio Seleccionado</Badge>
-                          <p className="font-bold text-lg mt-2">{m1Data.predio.codigo_predial_nacional}</p>
-                          <p className="text-sm text-slate-600">{m1Data.predio.direccion}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            Matrícula: {getMatriculaInmobiliaria(m1Data.predio)} | 
-                            Área: {m1Data.predio.area_terreno || 0} m²
-                          </p>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setM1Data(prev => ({ ...prev, predio: null, propietarios_anteriores: [], propietarios_nuevos: [] }))}
-                          className="text-red-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                  {/* Predios agregados */}
+                  {m1Data.predios.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-blue-100 text-blue-800">{m1Data.predios.length} predio(s) agregado(s)</Badge>
                       </div>
+                      {m1Data.predios.map((item, idx) => (
+                        <div key={item.predio.id} className="bg-white rounded-lg border border-blue-300">
+                          <div
+                            className="p-3 flex justify-between items-center cursor-pointer hover:bg-blue-50/50"
+                            onClick={() => setM1PredioExpandido(m1PredioExpandido === idx ? null : idx)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <ChevronDown className={`w-4 h-4 transition-transform ${m1PredioExpandido === idx ? 'rotate-180' : ''}`} />
+                              <div>
+                                <p className="font-bold text-sm">{item.predio.codigo_predial_nacional}</p>
+                                <p className="text-xs text-slate-600">{item.predio.direccion} | Props nuevos: {item.propietarios_nuevos.length}</p>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); eliminarPredioM1(idx); }} className="text-red-600 h-7">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {m1PredioExpandido === idx && (
+                            <div className="border-t p-3 space-y-3">
+                              {/* Propietarios anteriores de este predio */}
+                              <div>
+                                <p className="text-xs font-semibold text-red-700 mb-1">Propietarios a CANCELAR ({item.propietarios_anteriores.length})</p>
+                                {item.propietarios_anteriores.map((prop, pidx) => (
+                                  <div key={pidx} className="bg-red-50 p-2 rounded border border-red-200 mb-1 text-xs">
+                                    {prop.nombre_propietario || prop.nombre} - {prop.tipo_documento} {prop.numero_documento || prop.documento}
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Propietarios nuevos de este predio */}
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <p className="text-xs font-semibold text-emerald-700">Propietarios a INSCRIBIR ({item.propietarios_nuevos.length})</p>
+                                  <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => {
+                                    actualizarPropietariosNuevosM1(idx, [...item.propietarios_nuevos, { nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
+                                  }}>
+                                    <Plus className="w-3 h-3 mr-1" /> Agregar
+                                  </Button>
+                                </div>
+                                {item.propietarios_nuevos.length === 0 && (
+                                  <p className="text-center text-slate-400 py-2 text-xs">Sin propietarios nuevos. Haga clic en Agregar.</p>
+                                )}
+                                {item.propietarios_nuevos.map((prop, pidx) => (
+                                  <div key={pidx} className="bg-emerald-50 p-2 rounded border border-emerald-200 mb-1">
+                                    <div className="flex justify-between items-center mb-1">
+                                      <Badge className="bg-emerald-100 text-emerald-800 text-xs">Propietario {pidx + 1}</Badge>
+                                      <Button variant="ghost" size="sm" className="h-5 text-red-600" onClick={() => {
+                                        actualizarPropietariosNuevosM1(idx, item.propietarios_nuevos.filter((_, i) => i !== pidx));
+                                      }}>
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-1">
+                                      <div className="col-span-2">
+                                        <Input className="h-7 text-xs" placeholder="NOMBRE COMPLETO" value={prop.nombre_propietario}
+                                          onChange={(e) => {
+                                            const updated = [...item.propietarios_nuevos];
+                                            updated[pidx] = { ...updated[pidx], nombre_propietario: e.target.value.toUpperCase() };
+                                            actualizarPropietariosNuevosM1(idx, updated);
+                                          }}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Select value={prop.tipo_documento} onValueChange={(v) => {
+                                          const updated = [...item.propietarios_nuevos];
+                                          updated[pidx] = { ...updated[pidx], tipo_documento: v };
+                                          actualizarPropietariosNuevosM1(idx, updated);
+                                        }}>
+                                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="C">CC</SelectItem>
+                                            <SelectItem value="N">NIT</SelectItem>
+                                            <SelectItem value="T">TI</SelectItem>
+                                            <SelectItem value="E">CE</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Input className="h-7 text-xs" placeholder="Documento" value={prop.numero_documento}
+                                          onChange={(e) => {
+                                            const updated = [...item.propietarios_nuevos];
+                                            updated[pidx] = { ...updated[pidx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12) };
+                                            actualizarPropietariosNuevosM1(idx, updated);
+                                          }}
+                                          onBlur={(e) => {
+                                            if (e.target.value) {
+                                              const updated = [...item.propietarios_nuevos];
+                                              updated[pidx] = { ...updated[pidx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0') };
+                                              actualizarPropietariosNuevosM1(idx, updated);
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="mt-1">
+                                      <RadioGroup value={prop.estado_civil || ''} onValueChange={(v) => {
+                                        const updated = [...item.propietarios_nuevos];
+                                        updated[pidx] = { ...updated[pidx], estado_civil: v };
+                                        actualizarPropietariosNuevosM1(idx, updated);
+                                      }} className="flex flex-wrap gap-2 mt-1">
+                                        <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m1mp_${idx}_${pidx}_sin`} /><Label htmlFor={`m1mp_${idx}_${pidx}_sin`} className="text-xs cursor-pointer text-slate-500">Sin esp.</Label></div>
+                                        <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m1mp_${idx}_${pidx}_sol`} /><Label htmlFor={`m1mp_${idx}_${pidx}_sol`} className="text-xs cursor-pointer">S</Label></div>
+                                        <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m1mp_${idx}_${pidx}_cas`} /><Label htmlFor={`m1mp_${idx}_${pidx}_cas`} className="text-xs cursor-pointer">C</Label></div>
+                                        <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m1mp_${idx}_${pidx}_viu`} /><Label htmlFor={`m1mp_${idx}_${pidx}_viu`} className="text-xs cursor-pointer">V</Label></div>
+                                        <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m1mp_${idx}_${pidx}_uni`} /><Label htmlFor={`m1mp_${idx}_${pidx}_uni`} className="text-xs cursor-pointer">U</Label></div>
+                                      </RadioGroup>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Información de Resolución */}
-              {m1Data.predio && (
+              {m1Data.predios.length > 0 && (
                 <>
                   <Card className="border-purple-200 bg-purple-50/30">
                     <CardHeader className="py-3">
@@ -9725,120 +9720,6 @@ export default function MutacionesResoluciones() {
                     </CardContent>
                   </Card>
 
-                  {/* Propietarios Anteriores (CANCELAR) */}
-                  <Card className="border-red-200 bg-red-50/30">
-                    <CardHeader className="py-3">
-                      <CardTitle className="text-sm flex items-center gap-2 text-red-800">
-                        <X className="w-4 h-4" />
-                        Propietarios a CANCELAR ({m1Data.propietarios_anteriores.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="py-2">
-                      {m1Data.propietarios_anteriores.map((prop, idx) => (
-                        <div key={idx} className="bg-white p-3 rounded-lg border border-red-200 mb-2">
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="col-span-2">
-                              <Label className="text-xs">Nombre</Label>
-                              <Input value={prop.nombre_propietario} readOnly className="bg-slate-50" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Documento</Label>
-                              <Input value={`${prop.tipo_documento} ${prop.numero_documento}`} readOnly className="bg-slate-50" />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  {/* Propietarios Nuevos (INSCRIBIR) */}
-                  <Card className="border-emerald-200 bg-emerald-50/30">
-                    <CardHeader className="py-3">
-                      <div className="flex justify-between items-center">
-                        <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
-                          <Check className="w-4 h-4" />
-                          Propietarios a INSCRIBIR ({m1Data.propietarios_nuevos.length})
-                        </CardTitle>
-                        <Button size="sm" onClick={agregarPropietarioNuevo} className="bg-emerald-600 hover:bg-emerald-700">
-                          <Plus className="w-4 h-4 mr-1" /> Agregar
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="py-2">
-                      {m1Data.propietarios_nuevos.length === 0 ? (
-                        <p className="text-center text-slate-500 py-4">
-                          Haga clic en "Agregar" para añadir los nuevos propietarios
-                        </p>
-                      ) : (
-                        m1Data.propietarios_nuevos.map((prop, idx) => (
-                          <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200 mb-2">
-                            <div className="flex justify-between items-center mb-2">
-                              <Badge className="bg-emerald-100 text-emerald-800">Propietario {idx + 1}</Badge>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => eliminarPropietarioNuevo(idx)}
-                                className="text-red-600 h-6"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2">
-                              <div className="col-span-2">
-                                <Label className="text-xs">Nombre Completo *</Label>
-                                <Input 
-                                  value={prop.nombre_propietario}
-                                  onChange={(e) => actualizarPropietarioNuevo(idx, 'nombre_propietario', e.target.value.toUpperCase())}
-                                  placeholder="NOMBRE COMPLETO"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Tipo Doc</Label>
-                                <Select 
-                                  value={prop.tipo_documento}
-                                  onValueChange={(v) => actualizarPropietarioNuevo(idx, 'tipo_documento', v)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="C">CC</SelectItem>
-                                    <SelectItem value="N">NIT</SelectItem>
-                                    <SelectItem value="T">TI</SelectItem>
-                                    <SelectItem value="E">CE</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label className="text-xs">Número *</Label>
-                                <Input
-                                  value={prop.numero_documento}
-                                  onChange={(e) => actualizarPropietarioNuevo(idx, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
-                                  onBlur={(e) => { if (e.target.value) actualizarPropietarioNuevo(idx, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
-                                  placeholder="12345678"
-                                />
-                              </div>
-                            </div>
-                            <div className="mt-2">
-                              <Label className="text-xs">Estado Civil</Label>
-                              <RadioGroup 
-                                value={prop.estado_civil || ''} 
-                                onValueChange={(v) => actualizarPropietarioNuevo(idx, 'estado_civil', v)} 
-                                className="flex flex-wrap gap-3 mt-1"
-                              >
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m1_estado_${idx}_sin`} /><Label htmlFor={`m1_estado_${idx}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m1_estado_${idx}_sol`} /><Label htmlFor={`m1_estado_${idx}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m1_estado_${idx}_cas`} /><Label htmlFor={`m1_estado_${idx}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m1_estado_${idx}_viu`} /><Label htmlFor={`m1_estado_${idx}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m1_estado_${idx}_uni`} /><Label htmlFor={`m1_estado_${idx}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
-                              </RadioGroup>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
-
                   {/* Campo de Considerando Personalizado M1 */}
                   <Card className="border-purple-200 bg-purple-50/30">
                     <CardHeader className="py-3">
@@ -9854,7 +9735,7 @@ export default function MutacionesResoluciones() {
                       <Textarea
                         value={m1Data.texto_considerando || ''}
                         onChange={(e) => setM1Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
-                        placeholder={`Ejemplo: Qué, el(la) ciudadano(a) [NOMBRE DEL NUEVO PROPIETARIO], identificado(a) con Cédula de Ciudadanía No. [DOCUMENTO], mediante radicado ${m1Data.radicado_peticion || '[RADICADO]'}, solicita el cambio de propietario del predio identificado con código predial ${m1Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'}...`}
+                        placeholder={`Ejemplo: Qué, el(la) ciudadano(a) [NOMBRE DEL NUEVO PROPIETARIO], identificado(a) con Cédula de Ciudadanía No. [DOCUMENTO], mediante radicado ${m1Data.radicado_peticion || '[RADICADO]'}, solicita el cambio de propietario del predio identificado con código predial ${m1Data.predios[0]?.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'}...`}
                         rows={5}
                         className="font-mono text-sm"
                         data-testid="m1-considerando-input"
@@ -9893,30 +9774,39 @@ export default function MutacionesResoluciones() {
             }}>
               Cancelar
             </Button>
-            {tipoMutacionSeleccionado?.codigo === 'M1' && m1Data.predio && (
+            {tipoMutacionSeleccionado?.codigo === 'M1' && m1Data.predios.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Botón Enviar a Aprobación (si no puede aprobar) */}
                 {!puedeAprobar && (
-                  <Button 
+                  <Button
                     onClick={async () => {
-                      if (!m1Data.predio || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0) {
+                      if (m1Data.predios.length === 0 || !m1Data.radicado_peticion) {
                         toast.error('Debe completar todos los campos requeridos');
                         return;
                       }
+                      const sinProps = m1Data.predios.some(p => p.propietarios_nuevos.length === 0);
+                      if (sinProps) { toast.error('Todos los predios deben tener propietarios nuevos'); return; }
                       setEnviandoSolicitud(true);
                       try {
                         const token = localStorage.getItem('token');
+                        const primerPredio = m1Data.predios[0].predio;
+                        const predios_m1 = m1Data.predios.map(p => ({
+                          predio_id: p.predio.id,
+                          propietarios_anteriores: p.propietarios_anteriores,
+                          propietarios_nuevos: p.propietarios_nuevos
+                        }));
                         const payload = {
                           tipo: 'M1',
                           tipo_mutacion: 'M1',
                           municipio: m1Data.municipio,
                           radicado: m1Data.radicado_peticion,
-                          predio: m1Data.predio,
-                          predio_id: m1Data.predio.id,
-                          codigo_predial: m1Data.predio.codigo_predial_nacional || m1Data.predio.codigo_homologado || null,
-                          predio_direccion: m1Data.predio.direccion || null,
-                          propietarios_anteriores: m1Data.propietarios_anteriores,
-                          propietarios_nuevos: m1Data.propietarios_nuevos,
+                          predio: primerPredio,
+                          predio_id: primerPredio.id,
+                          codigo_predial: primerPredio.codigo_predial_nacional || primerPredio.codigo_homologado || null,
+                          predio_direccion: primerPredio.direccion || null,
+                          propietarios_anteriores: m1Data.predios[0].propietarios_anteriores,
+                          propietarios_nuevos: m1Data.predios[0].propietarios_nuevos,
+                          predios_m1: predios_m1.length > 0 ? predios_m1 : undefined,
                           observaciones: m1Data.observaciones,
                           texto_considerando: m1Data.texto_considerando || '',
                           fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
@@ -9928,10 +9818,9 @@ export default function MutacionesResoluciones() {
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
-                        
+
                         if (response.data.exito) {
                           toast.success('Solicitud M1 enviada a aprobación');
-                          // Actualizar mutación en múltiples a PENDIENTE
                           if (multiplesData.peticion_id && mutacionEnEdicion !== null) {
                             const mut = multiplesData.mutaciones[mutacionEnEdicion];
                             if (mut && mut.id) {
@@ -9948,9 +9837,7 @@ export default function MutacionesResoluciones() {
                                   )
                                 }));
                                 setMutacionEnEdicion(null);
-                              } catch (err) {
-                                console.error('Error actualizando mutación:', err);
-                              }
+                              } catch (err) { console.error('Error actualizando mutación:', err); }
                             }
                           }
                           resetFormularioM1();
@@ -9967,7 +9854,7 @@ export default function MutacionesResoluciones() {
                         setEnviandoSolicitud(false);
                       }
                     }}
-                    disabled={enviandoSolicitud || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
+                    disabled={enviandoSolicitud || !m1Data.radicado_peticion || m1Data.predios.some(p => p.propietarios_nuevos.length === 0)}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
@@ -9975,9 +9862,9 @@ export default function MutacionesResoluciones() {
                 )}
                 {/* Botón Generar PDF (si puede aprobar) */}
                 {puedeAprobar && (
-                  <Button 
-                    onClick={generarResolucionM1} 
-                    disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
+                  <Button
+                    onClick={generarResolucionM1}
+                    disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.predios.some(p => p.propietarios_nuevos.length === 0)}
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
                     {generando ? 'Generando...' : 'Generar Resolución M1'}
@@ -10448,22 +10335,29 @@ export default function MutacionesResoluciones() {
             )}
             {tipoMutacionSeleccionado?.codigo === 'COMPLEMENTACION' && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
                 {!puedeAprobar && (
-                  <Button 
+                  <Button
                     onClick={async () => {
-                      if (!complementacionData.predio) {
-                        toast.error('Debe seleccionar un predio');
+                      if (complementacionData.predios.length === 0) {
+                        toast.error('Debe agregar al menos un predio');
                         return;
                       }
                       setEnviandoSolicitud(true);
                       try {
                         const token = localStorage.getItem('token');
-                        const predio = complementacionData.predio;
-                        const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
-                        const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
-                        const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
-                        
+                        const primerItem = complementacionData.predios[0];
+                        const predio = primerItem.predio;
+                        const predios_complementacion = complementacionData.predios.map(item => ({
+                          predio_id: item.predio.id,
+                          propietarios_anteriores: item.propietarios_anteriores,
+                          propietarios_nuevos: item.propietarios_nuevos,
+                          area_terreno_nueva: item.area_terreno_nueva,
+                          area_construida_nueva: item.area_construida_nueva,
+                          avaluo_nuevo: item.avaluo_nuevo,
+                          matricula_nueva: item.matricula_nueva,
+                          direccion_nueva: item.direccion_nueva,
+                          destino_nuevo: item.destino_nuevo,
+                        }));
                         const payload = {
                           tipo: 'COMPLEMENTACION',
                           tipo_mutacion: 'COMPLEMENTACION',
@@ -10474,25 +10368,14 @@ export default function MutacionesResoluciones() {
                             nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
                             documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
                           },
-                          area_terreno_anterior: areaTerreno,
-                          area_construida_anterior: areaConstruida,
-                          avaluo_anterior: avaluo,
-                          area_terreno_nueva: complementacionData.area_terreno_nueva,
-                          area_construida_nueva: complementacionData.area_construida_nueva,
-                          avaluo_nuevo: complementacionData.avaluo_nuevo,
                           documentos_soporte: complementacionData.documentos_soporte,
                           observaciones: complementacionData.observaciones,
                           texto_considerando: complementacionData.texto_considerando,
                           fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
+                          predios_complementacion: predios_complementacion.length > 0 ? predios_complementacion : undefined,
                           enviar_a_aprobacion: true
                         };
-                        
-                        const response = await axios.post(
-                          `${API}/solicitudes-mutacion`,
-                          payload,
-                          { headers: { Authorization: `Bearer ${token}` } }
-                        );
-                        
+                        const response = await axios.post(`${API}/solicitudes-mutacion`, payload, { headers: { Authorization: `Bearer ${token}` } });
                         if (response.data.exito) {
                           toast.success('Solicitud enviada a aprobación exitosamente');
                           resetComplementacionForm();
@@ -10509,18 +10392,16 @@ export default function MutacionesResoluciones() {
                         setEnviandoSolicitud(false);
                       }
                     }}
-                    disabled={enviandoSolicitud || !complementacionData.predio}
+                    disabled={enviandoSolicitud || complementacionData.predios.length === 0}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
                   </Button>
                 )}
-                
-                {/* Botón Generar PDF (si puede aprobar) */}
                 {puedeAprobar && (
-                  <Button 
-                    onClick={generarResolucionComplementacion} 
-                    disabled={generando || !complementacionData.predio}
+                  <Button
+                    onClick={generarResolucionComplementacion}
+                    disabled={generando || complementacionData.predios.length === 0}
                     className="bg-slate-600 hover:bg-slate-700"
                     data-testid="complementacion-generar-btn"
                   >

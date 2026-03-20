@@ -609,6 +609,10 @@ class SolicitudMutacionCreate(BaseModel):
     predio: Optional[dict] = None  # Datos del predio seleccionado
     tipo_mutacion: Optional[str] = None  # Alias de tipo para complementación
     documentos_soporte: Optional[str] = None
+    # Multi-predio M1: lista de {predio_id, propietarios_anteriores, propietarios_nuevos}
+    predios_m1: Optional[List[dict]] = None
+    # Multi-predio Complementación: lista de {predio_id, propietarios_anteriores, propietarios_nuevos, area_terreno_nueva, ...}
+    predios_complementacion: Optional[List[dict]] = None
     # Campo universal para texto personalizado de considerandos
     texto_considerando: Optional[str] = None  # Texto personalizado para la sección "CONSIDERANDO" de la resolución
     # Flag para omitir auto-aprobación (usado en previsualización)
@@ -15140,6 +15144,301 @@ def obtener_datos_r1_r2(predio: dict) -> dict:
         'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
     }
 
+async def _generar_resolucion_m1_multi_predio(cambio: dict, aprobador: dict, predios_m1: list) -> dict:
+    """
+    Genera una sola resolución M1 para múltiples predios.
+    Cada predio tiene su propio bloque CANCELACIÓN/INSCRIPCIÓN en el PDF.
+    """
+    try:
+        # Verificar bloqueo de TODOS los predios (fail-fast)
+        for pm in predios_m1:
+            pid = pm.get("predio_id")
+            if pid:
+                bloqueo_check = await verificar_predio_bloqueado(pid)
+                if bloqueo_check.get("bloqueado"):
+                    bloqueo_info = bloqueo_check.get("info", {})
+                    raise Exception(
+                        f"El predio {pid} está bloqueado por proceso legal. "
+                        f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}."
+                    )
+
+        # Usar el primer predio para obtener datos de municipio/numeración
+        primer_predio_db = await db.predios.find_one({"id": predios_m1[0]["predio_id"]}, {"_id": 0})
+        if not primer_predio_db:
+            raise Exception(f"No se encontró el predio {predios_m1[0]['predio_id']}")
+
+        codigo = primer_predio_db.get("codigo_predial_nacional", "")
+        codigo_municipio = codigo[0:5] if len(codigo) >= 5 else "54003"
+        depto = codigo[0:2] if len(codigo) >= 2 else "54"
+        mpio = codigo[2:5] if len(codigo) >= 5 else "003"
+
+        # Un solo número de resolución
+        año_actual = datetime.now().year
+        res_num_data = await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
+        numero_resolucion = res_num_data["numero_resolucion"]
+        fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
+
+        # Obtener plantilla M1
+        plantilla = await db.resolucion_plantillas.find_one({"tipo": "M1"}, {"_id": 0})
+        plantilla_textos = {}
+        if plantilla:
+            plantilla_textos = {
+                "firmante_nombre": plantilla.get("firmante_nombre", "DALGIE ESPERANZA TORRADO RIZO"),
+                "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
+            }
+
+        # Obtener elaboró
+        elaboro = cambio.get("creado_por_nombre", "")
+        if not elaboro:
+            proponente = await db.users.find_one({"id": cambio.get("propuesto_por")}, {"_id": 0, "full_name": 1})
+            elaboro = proponente.get("full_name", "") if proponente else ""
+
+        # Construir bloques para cada predio
+        predios_bloques = []
+        all_npns = []
+        for pm in predios_m1:
+            pid = pm.get("predio_id")
+            predio_original = await db.predios.find_one({"id": pid}, {"_id": 0})
+            if not predio_original:
+                raise Exception(f"No se encontró el predio {pid}")
+
+            npn_predio = predio_original.get("codigo_predial_nacional", "")
+            all_npns.append(npn_predio)
+
+            # Datos anteriores de R1/R2
+            datos_r1_r2 = obtener_datos_r1_r2(predio_original)
+            matricula_cancel = datos_r1_r2.get("matricula_inmobiliaria") or predio_original.get("matricula_inmobiliaria") or ""
+            if not matricula_cancel:
+                r2_regs = predio_original.get("r2_registros", [])
+                if r2_regs:
+                    matricula_cancel = r2_regs[0].get("matricula_inmobiliaria") or ""
+
+            # Propietarios anteriores
+            props_ant = []
+            pm_props_ant = pm.get("propietarios_anteriores")
+            if pm_props_ant:
+                for p in pm_props_ant:
+                    props_ant.append({
+                        "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                        "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    })
+            elif predio_original.get("propietarios"):
+                for p in predio_original["propietarios"]:
+                    props_ant.append({
+                        "nombre": p.get("nombre_propietario", ""),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": formatear_documento(p.get("numero_documento", "")),
+                        "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    })
+
+            # Propietarios nuevos
+            props_new = []
+            for p in pm.get("propietarios_nuevos", []):
+                props_new.append({
+                    "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                    "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                })
+
+            if not props_new and props_ant:
+                props_new = props_ant
+
+            datos_anteriores = {
+                'codigo_homologado': datos_r1_r2.get("codigo_homologado") or "",
+                'direccion': datos_r1_r2.get("direccion") or "",
+                'destino_economico': datos_r1_r2.get("destino_economico") or "A",
+                'area_terreno': str(datos_r1_r2.get("area_terreno") or 0),
+                'area_construida': str(datos_r1_r2.get("area_construida") or 0),
+                'avaluo': f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
+                'matricula': matricula_cancel,
+            }
+
+            # Para inscripción, en M1 los datos físicos no cambian
+            datos_inscripcion = {
+                'codigo_homologado': datos_anteriores['codigo_homologado'],
+                'direccion': datos_anteriores['direccion'],
+                'destino_economico': datos_anteriores['destino_economico'],
+                'area_terreno': datos_anteriores['area_terreno'],
+                'area_construida': datos_anteriores['area_construida'],
+                'avaluo': datos_anteriores['avaluo'],
+                'matricula': matricula_cancel,
+            }
+
+            predios_bloques.append({
+                "npn": npn_predio,
+                "propietarios_anteriores": props_ant,
+                "propietarios_nuevos": props_new,
+                "datos_anteriores": datos_anteriores,
+                "datos_inscripcion": datos_inscripcion,
+            })
+
+        # Generar código de verificación
+        codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+
+        # Generar PDF con multi-bloque
+        from resolucion_pdf_generator import generate_resolucion_pdf
+        pdf_bytes = generate_resolucion_pdf(
+            numero_resolucion=numero_resolucion,
+            fecha_resolucion=fecha_resolucion,
+            municipio=primer_predio_db.get("municipio", ""),
+            tipo_tramite="Mutación Primera",
+            radicado=cambio.get("radicado", cambio.get("radicado_numero", f"RASMGC-{datetime.now().strftime('%Y%m%d')}")),
+            codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
+            npn=codigo,
+            matricula_inmobiliaria="",
+            direccion="",
+            avaluo="$0",
+            vigencia_fiscal=f"01/01/{año_actual}",
+            elaboro=elaboro,
+            aprobo=aprobador.get("full_name", ""),
+            plantilla=plantilla_textos,
+            codigo_verificacion=codigo_verificacion_res,
+            verificacion_base_url=VERIFICACION_BASE_URL,
+            texto_considerando=cambio.get("texto_considerando"),
+            predios_bloques=predios_bloques,
+        )
+
+        # Guardar PDF
+        resoluciones_dir = "/app/uploads/resoluciones"
+        import os
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        filename = f"{numero_resolucion.replace('/', '-')}.pdf"
+        filepath = f"{resoluciones_dir}/{filename}"
+        with open(filepath, "wb") as f:
+            f.write(pdf_bytes)
+
+        # Extraer consecutivo del número de resolución
+        try:
+            consecutivo = int(numero_resolucion.split("-")[3])
+        except (IndexError, ValueError):
+            consecutivo = 0
+
+        # Registrar resolución en DB
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "tipo": "M1",
+            "tipo_mutacion": "M1",
+            "año": año_actual,
+            "consecutivo": consecutivo,
+            "codigo_municipio": codigo_municipio,
+            "cambio_id": cambio.get("id"),
+            "predio_id": predios_m1[0]["predio_id"],
+            "predios_ids": [pm["predio_id"] for pm in predios_m1],
+            "codigo_predial": codigo,
+            "radicado": cambio.get("radicado") or cambio.get("radicado_numero", ""),
+            "municipio": primer_predio_db.get("municipio", ""),
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "codigo_verificacion": codigo_verificacion_res,
+            "aprobado_por": aprobador.get("id"),
+            "aprobado_por_nombre": aprobador.get("full_name", ""),
+            "elaborado_por": cambio.get("propuesto_por"),
+            "elaborado_por_nombre": elaboro,
+            "creado_por_id": cambio.get("propuesto_por"),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+            "multi_predio": True,
+        }
+        await db.resoluciones.insert_one(resolucion_doc.copy())
+
+        # Actualizar cada predio en DB
+        for idx, pm in enumerate(predios_m1):
+            pid = pm.get("predio_id")
+            bloque = predios_bloques[idx]
+            props_new = bloque["propietarios_nuevos"]
+
+            propietarios_para_predio = []
+            for p in props_new:
+                propietarios_para_predio.append({
+                    "nombre_propietario": p.get("nombre", p.get("nombre_propietario", "")),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "numero_documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                    "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    "derecho": p.get("derecho", ""),
+                })
+
+            historial_entry = {
+                "tipo": "M1",
+                "tipo_mutacion": "M1",
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
+                "resolucion": numero_resolucion,
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+                "radicado": cambio.get("radicado", cambio.get("radicado_numero", "")),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "generado_por": aprobador.get("full_name", ""),
+                "descripcion": "Cambio de propietario (multi-predio)",
+                "propietarios_anteriores": bloque["propietarios_anteriores"],
+                "propietarios_nuevos": props_new,
+                "aprobado_por": aprobador.get("full_name", ""),
+            }
+
+            update_set = {
+                "ultima_actualizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
+            }
+            if propietarios_para_predio:
+                update_set["propietarios"] = propietarios_para_predio
+
+            result = await db.predios.update_one(
+                {"id": pid},
+                {"$push": {"historial_resoluciones": historial_entry}, "$set": update_set}
+            )
+            if result.matched_count == 0:
+                logging.warning(f"⚠️ No se pudo actualizar predio {pid} en multi-predio M1")
+            else:
+                logging.info(f"✅ Predio {pid} actualizado en multi-predio M1")
+
+        # Guardar certificado verificable
+        hora_colombia = datetime.now(COLOMBIA_TZ)
+        verificacion_doc = {
+            "id": str(uuid.uuid4()),
+            "codigo_verificacion": codigo_verificacion_res,
+            "tipo_documento": "resolucion",
+            "tipo": "RESOLUCION_M1",
+            "numero_resolucion": numero_resolucion,
+            "predio_id": predios_m1[0]["predio_id"],
+            "codigo_predial": codigo,
+            "municipio": primer_predio_db.get("municipio", ""),
+            "fecha_generacion": hora_colombia.isoformat(),
+            "fecha_vencimiento": (hora_colombia + timedelta(days=365)).isoformat(),
+            "estado": "activo",
+            "generado_por": aprobador.get("id"),
+            "generado_por_nombre": aprobador.get("full_name", ""),
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "created_at": hora_colombia.isoformat(),
+            "multi_predio": True,
+        }
+        await db.certificados_verificables.insert_one(verificacion_doc.copy())
+
+        logging.info(f"Resolución multi-predio M1 {numero_resolucion} generada para {len(predios_m1)} predios")
+
+        import base64 as b64mod
+        pdf_base64 = b64mod.b64encode(pdf_bytes).decode('utf-8')
+
+        return {
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "pdf_base64": pdf_base64,
+            "consecutivo": consecutivo,
+            "tipo_mutacion": "M1",
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "multi_predio": True,
+        }
+
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m1_multi_predio: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
 async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
     """
     Genera un PDF de resolución final para un cambio aprobado.
@@ -15166,7 +15465,12 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         if tipo_cambio not in ["modificacion", "creacion"]:
             logging.info(f"Tipo de cambio '{tipo_cambio}' no requiere resolución automática")
             return None
-        
+
+        # === MULTI-PREDIO M1 ===
+        predios_m1 = cambio.get("predios_m1")
+        if predios_m1 and len(predios_m1) > 0:
+            return await _generar_resolucion_m1_multi_predio(cambio, aprobador, predios_m1)
+
         # Obtener predio actual para datos completos
         predio = None
         if cambio.get("predio_id"):
@@ -17445,6 +17749,271 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         raise
 
 
+async def _generar_complementacion_multi_predio(solicitud: dict, aprobador: dict, predios_complementacion: list) -> dict:
+    """
+    Genera una sola resolución de Complementación para múltiples predios.
+    """
+    try:
+        from resolucion_complementacion_pdf_generator import generate_complementacion_resolution_pdf
+
+        municipio = solicitud.get('municipio', '')
+        solicitante = solicitud.get('solicitante', {})
+
+        # Verificar bloqueo de TODOS los predios (fail-fast)
+        for pc in predios_complementacion:
+            pid = pc.get("predio_id")
+            if pid:
+                bloqueo_check = await verificar_predio_bloqueado(pid)
+                if bloqueo_check.get("bloqueado"):
+                    bloqueo_info = bloqueo_check.get("info", {})
+                    raise Exception(f"El predio {pid} está bloqueado. Motivo: {bloqueo_info.get('motivo', 'No especificado')}.")
+
+        # Usar primer predio para municipio/numeración
+        primer_predio_db = await db.predios.find_one({"id": predios_complementacion[0]["predio_id"]}, {"_id": 0})
+        if not primer_predio_db:
+            raise Exception(f"No se encontró el predio {predios_complementacion[0]['predio_id']}")
+
+        codigo_predial_full = primer_predio_db.get('codigo_predial_nacional', '')
+        codigo_municipio = codigo_predial_full[0:5] if len(codigo_predial_full) >= 5 else None
+        if not codigo_municipio:
+            for codigo, nombre in MUNICIPIOS_R1R2.items():
+                if nombre.lower() == municipio.lower() or municipio.lower() in nombre.lower():
+                    codigo_municipio = codigo
+                    break
+        if not codigo_municipio:
+            codigo_municipio = "54003"
+
+        # Un solo número de resolución
+        res_numero = await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
+        numero_resolucion = res_numero["numero_resolucion"]
+        siguiente_numero = res_numero["siguiente_numero"]
+        year = res_numero["año"]
+        codigo_verificacion = f"COMP-{str(uuid.uuid4())[:8].upper()}"
+
+        # Helper para datos R1/R2
+        def obtener_datos_r1_r2_comp(predio):
+            if not predio:
+                return {}
+            r1 = predio.get('r1_registros', [])
+            r2 = predio.get('r2_registros', [])
+            r1_data = r1[0] if r1 else {}
+            r2_data = r2[0] if r2 else {}
+            return {
+                'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+                'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+                'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', 'A'),
+                'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+                'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+                'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+                'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', ''),
+                'propietarios': r2_data.get('propietarios') or predio.get('propietarios', [])
+            }
+
+        # Construir bloques para cada predio
+        bloques_pdf = []
+        for pc in predios_complementacion:
+            pid = pc.get("predio_id")
+            predio_db = await db.predios.find_one({"id": pid}, {"_id": 0})
+            if not predio_db:
+                raise Exception(f"No se encontró el predio {pid}")
+
+            datos_r1_r2 = obtener_datos_r1_r2_comp(predio_db)
+
+            # Propietarios anteriores
+            props_ant_raw = pc.get('propietarios_anteriores', [])
+            if not props_ant_raw:
+                props_ant_raw = [{
+                    "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": formatear_documento(p.get("numero_documento", "")),
+                    "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                } for p in predio_db.get('propietarios', [])]
+
+            props_new_raw = pc.get('propietarios_nuevos', [])
+            if not props_new_raw:
+                props_new_raw = props_ant_raw
+
+            props_ant = [{
+                "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+                "tipo_documento": p.get("tipo_documento", "CC"),
+                "documento": formatear_documento(p.get("numero_documento", p.get("documento", ""))),
+                "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+            } for p in props_ant_raw]
+
+            props_new = [{
+                "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+                "tipo_documento": p.get("tipo_documento", "CC"),
+                "documento": formatear_documento(p.get("numero_documento", p.get("documento", ""))),
+                "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+            } for p in props_new_raw]
+
+            bloques_pdf.append({
+                "predio": predio_db,
+                "propietarios_anteriores": props_ant,
+                "propietarios_nuevos": props_new,
+                "matricula_nueva": pc.get('matricula_nueva') or datos_r1_r2.get('matricula_inmobiliaria', ''),
+                "direccion_nueva": pc.get('direccion_nueva') or datos_r1_r2.get('direccion', ''),
+                "destino_nuevo": pc.get('destino_nuevo') or datos_r1_r2.get('destino_economico', 'A'),
+                "area_terreno_anterior": datos_r1_r2.get('area_terreno', 0),
+                "area_construida_anterior": datos_r1_r2.get('area_construida', 0),
+                "avaluo_anterior": datos_r1_r2.get('avaluo', 0),
+                "area_terreno_nueva": pc.get('area_terreno_nueva', datos_r1_r2.get('area_terreno', 0)),
+                "area_construida_nueva": pc.get('area_construida_nueva', datos_r1_r2.get('area_construida', 0)),
+                "avaluo_nuevo": pc.get('avaluo_nuevo', datos_r1_r2.get('avaluo', 0)),
+            })
+
+        # Preparar datos PDF (usando primer predio como referencia)
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio,
+            "radicado": solicitud.get('radicado', ''),
+            "codigo_verificacion": codigo_verificacion,
+            "elaborado_por": solicitud.get('creado_por_nombre', aprobador['full_name']),
+            "revisado_por": aprobador['full_name'],
+            "documentos_soporte": solicitud.get('documentos_soporte', 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición'),
+            "texto_considerando": solicitud.get('texto_considerando', ''),
+            "predio": primer_predio_db,
+            "solicitante": solicitante,
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
+            "vigencia_cancelacion": year - 1,
+            "vigencia_inscripcion": year,
+            # Multi-predio bloques
+            "predios_complementacion": bloques_pdf,
+        }
+
+        pdf_bytes = generate_complementacion_resolution_pdf(pdf_data)
+
+        # Guardar PDF
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
+        pdf_dir = "/app/uploads/resoluciones"
+        os.makedirs(pdf_dir, exist_ok=True)
+        pdf_path = f"{pdf_dir}/{filename}"
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        # Crear documento de resolución
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "tipo": "COMPLEMENTACION",
+            "tipo_mutacion": "COMPLEMENTACION",
+            "numero_resolucion": numero_resolucion,
+            "año": year,
+            "consecutivo": siguiente_numero,
+            "codigo_municipio": codigo_municipio,
+            "codigo_verificacion": codigo_verificacion,
+            "municipio": municipio,
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+            "archivo_pdf": pdf_path,
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "filename": filename,
+            "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
+            "predio_id": predios_complementacion[0]["predio_id"],
+            "predios_ids": [pc["predio_id"] for pc in predios_complementacion],
+            "elaborado_por": solicitud.get('creado_por_id'),
+            "elaborado_por_nombre": solicitud.get('creado_por_nombre', ''),
+            "aprobado_por": aprobador['id'],
+            "aprobado_por_nombre": aprobador['full_name'],
+            "multi_predio": True,
+        }
+        await db.resoluciones.insert_one(resolucion_doc)
+
+        # Actualizar solicitud
+        await db.solicitudes_mutacion.update_one(
+            {"id": solicitud['id']},
+            {"$set": {
+                "estado": "APROBADA",
+                "resolucion_id": resolucion_doc['id'],
+                "resolucion_numero": numero_resolucion,
+                "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                "aprobado_por": aprobador['id'],
+                "aprobado_por_nombre": aprobador['full_name']
+            }}
+        )
+
+        # Actualizar cada predio en DB
+        for idx, pc in enumerate(predios_complementacion):
+            pid = pc.get("predio_id")
+            bloque = bloques_pdf[idx]
+
+            historial_entry = {
+                "tipo": "COMPLEMENTACION",
+                "tipo_mutacion": "COMPLEMENTACION",
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
+                "resolucion": numero_resolucion,
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+                "radicado": solicitud.get('radicado', ''),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "generado_por": aprobador.get("full_name", ""),
+                "aprobado_por": aprobador.get("full_name", ""),
+                "descripcion": "Complementación de información (multi-predio)",
+            }
+
+            update_fields = {
+                "area_terreno": bloque["area_terreno_nueva"],
+                "area_construida": bloque["area_construida_nueva"],
+                "avaluo": bloque["avaluo_nuevo"],
+                "area_editada_en_plataforma": True,
+                "ultima_actualizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            }
+            if bloque.get("matricula_nueva"):
+                update_fields["matricula_inmobiliaria"] = bloque["matricula_nueva"]
+            if bloque.get("direccion_nueva"):
+                update_fields["direccion"] = bloque["direccion_nueva"]
+            if bloque.get("destino_nuevo"):
+                update_fields["destino_economico"] = bloque["destino_nuevo"]
+
+            props_new_raw = pc.get('propietarios_nuevos', [])
+            if props_new_raw:
+                update_fields["propietarios"] = [{
+                    "nombre_propietario": p.get("nombre_propietario", p.get("nombre", "")),
+                    "tipo_documento": p.get("tipo_documento", "C"),
+                    "numero_documento": p.get("numero_documento", p.get("documento", "")),
+                    "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                } for p in props_new_raw]
+
+            # R1/R2 updates
+            r1_update = {}
+            if bloque.get("destino_nuevo"):
+                r1_update["r1_registros.0.destino_economico"] = bloque["destino_nuevo"]
+            if bloque.get("direccion_nueva"):
+                r1_update["r1_registros.0.direccion"] = bloque["direccion_nueva"]
+            r1_update["r1_registros.0.area_terreno"] = bloque["area_terreno_nueva"]
+            r1_update["r1_registros.0.area_construida"] = bloque["area_construida_nueva"]
+            r1_update["r1_registros.0.avaluo"] = bloque["avaluo_nuevo"]
+            update_fields.update(r1_update)
+            if bloque.get("matricula_nueva"):
+                update_fields["r2_registros.0.matricula_inmobiliaria"] = bloque["matricula_nueva"]
+
+            await db.predios.update_one(
+                {"id": pid},
+                {"$set": update_fields, "$push": {"historial_resoluciones": historial_entry}}
+            )
+            logging.info(f"✅ Predio {pid} actualizado en multi-predio Complementación")
+
+        logging.info(f"Resolución multi-predio COMP {numero_resolucion} generada para {len(predios_complementacion)} predios")
+
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "multi_predio": True,
+        }
+
+    except Exception as e:
+        logging.error(f"Error en _generar_complementacion_multi_predio: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
 async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador: dict) -> dict:
     """
     Genera internamente una resolución de Complementación de Información.
@@ -17473,7 +18042,12 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
                     f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
                 )
-        
+
+        # === MULTI-PREDIO COMPLEMENTACIÓN ===
+        predios_complementacion = solicitud.get("predios_complementacion")
+        if predios_complementacion and len(predios_complementacion) > 0:
+            return await _generar_complementacion_multi_predio(solicitud, aprobador, predios_complementacion)
+
         # Datos R1/R2 del predio
         def obtener_datos_r1_r2_comp(predio):
             if not predio:
@@ -32056,6 +32630,9 @@ async def crear_solicitud_mutacion(
             "matricula_nueva": data.matricula_nueva,
             "direccion_nueva": data.direccion_nueva,
             "documentos_soporte": data.documentos_soporte,
+            # Multi-predio
+            "predios_m1": data.predios_m1,
+            "predios_complementacion": data.predios_complementacion,
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
@@ -32101,7 +32678,22 @@ async def crear_solicitud_mutacion(
                     pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
                 else:
                     # M1 - Lógica existente para cambio de propietarios
-                    if data.predio_id:
+                    if data.predios_m1 and len(data.predios_m1) > 0:
+                        # Multi-predio M1
+                        cambio_doc = {
+                            "id": solicitud_id,
+                            "tipo_cambio": "modificacion",
+                            "predio_id": data.predios_m1[0].get("predio_id", data.predio_id),
+                            "datos_propuestos": {
+                                "propietarios": data.propietarios_nuevos or [],
+                            },
+                            "predios_m1": data.predios_m1,
+                            "radicado_numero": radicado,
+                            "justificacion": data.observaciones,
+                            "texto_considerando": data.texto_considerando,
+                        }
+                        pdf_result = await generar_resolucion_final(cambio_doc, current_user)
+                    elif data.predio_id:
                         cambio_doc = {
                             "id": solicitud_id,
                             "tipo_cambio": "modificacion",
@@ -32524,6 +33116,52 @@ async def preview_solicitud_mutacion(
             if predio_id:
                 predio_db = await db.predios.find_one({"id": predio_id}, {"_id": 0})
             predio_final = predio_db or predio_data
+
+            # Construir bloques multi-predio para preview si existen
+            predios_comp_preview = solicitud_preview.get('predios_complementacion')
+            bloques_comp_preview = None
+            if predios_comp_preview and len(predios_comp_preview) > 0:
+                bloques_comp_preview = []
+                for pc in predios_comp_preview:
+                    pc_id = pc.get("predio_id")
+                    pc_predio = await db.predios.find_one({"id": pc_id}, {"_id": 0}) if pc_id else {}
+                    pc_predio = pc_predio or {}
+                    pc_r1 = pc_predio.get('r1_registros', [{}])
+                    pc_r1_data = pc_r1[0] if pc_r1 else {}
+                    pc_r2 = pc_predio.get('r2_registros', [{}])
+                    pc_r2_data = pc_r2[0] if pc_r2 else {}
+
+                    pc_props_ant = pc.get('propietarios_anteriores', [])
+                    if not pc_props_ant and pc_predio.get('propietarios'):
+                        pc_props_ant = [{
+                            "nombre": p.get("nombre_propietario", ""),
+                            "tipo_documento": p.get("tipo_documento", "CC"),
+                            "documento": formatear_documento(p.get("numero_documento", "")),
+                            "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                        } for p in pc_predio["propietarios"]]
+
+                    pc_props_new = [{
+                        "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                        "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    } for p in pc.get('propietarios_nuevos', [])]
+
+                    bloques_comp_preview.append({
+                        "predio": pc_predio,
+                        "propietarios_anteriores": pc_props_ant,
+                        "propietarios_nuevos": pc_props_new,
+                        "matricula_nueva": pc.get('matricula_nueva', ''),
+                        "direccion_nueva": pc.get('direccion_nueva', ''),
+                        "destino_nuevo": pc.get('destino_nuevo', ''),
+                        "area_terreno_anterior": pc_r1_data.get('area_terreno', pc_predio.get('area_terreno', 0)),
+                        "area_construida_anterior": pc_r1_data.get('area_construida', pc_predio.get('area_construida', 0)),
+                        "avaluo_anterior": pc_predio.get('avaluo', 0),
+                        "area_terreno_nueva": pc.get('area_terreno_nueva', 0),
+                        "area_construida_nueva": pc.get('area_construida_nueva', 0),
+                        "avaluo_nuevo": pc.get('avaluo_nuevo', 0),
+                    })
+
             pdf_data = {
                 "numero_resolucion": numero_borrador,
                 "fecha_resolucion": fecha_borrador,
@@ -32549,11 +33187,63 @@ async def preview_solicitud_mutacion(
                 "revisado_por": current_user.get('full_name', ''),
                 "texto_considerando": solicitud_preview.get('texto_considerando'),
             }
+            if bloques_comp_preview:
+                pdf_data["predios_complementacion"] = bloques_comp_preview
             pdf_bytes = generar_resolucion_complementacion_pdf(pdf_data, es_borrador=True)
 
         else:
             # M1 - generar preview con generador M1
             from resolucion_pdf_generator import generate_resolucion_pdf
+
+            # Detectar multi-predio M1
+            predios_m1_preview = solicitud_preview.get('predios_m1')
+            predios_bloques_preview = None
+            if predios_m1_preview and len(predios_m1_preview) > 0:
+                predios_bloques_preview = []
+                for pm in predios_m1_preview:
+                    pm_id = pm.get("predio_id")
+                    pm_predio = await db.predios.find_one({"id": pm_id}, {"_id": 0}) if pm_id else {}
+                    pm_predio = pm_predio or {}
+                    pm_r1 = pm_predio.get('r1_registros', [{}])
+                    pm_r1_data = pm_r1[0] if pm_r1 else {}
+                    pm_r2 = pm_predio.get('r2_registros', [{}])
+                    pm_r2_data = pm_r2[0] if pm_r2 else {}
+                    pm_npn = pm_predio.get('codigo_predial_nacional', '')
+                    pm_matricula = pm_r2_data.get('matricula_inmobiliaria', pm_predio.get('matricula_inmobiliaria', ''))
+
+                    pm_props_ant = pm.get('propietarios_anteriores', [])
+                    if not pm_props_ant and pm_predio.get('propietarios'):
+                        pm_props_ant = [{
+                            "nombre": p.get("nombre_propietario", ""),
+                            "tipo_documento": p.get("tipo_documento", "CC"),
+                            "documento": formatear_documento(p.get("numero_documento", "")),
+                            "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                        } for p in pm_predio["propietarios"]]
+
+                    pm_props_new = [{
+                        "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                        "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    } for p in pm.get('propietarios_nuevos', [])]
+
+                    datos_cancel = {
+                        'codigo_homologado': pm_r1_data.get('codigo_homologado', ''),
+                        'direccion': pm_r1_data.get('direccion', pm_predio.get('direccion', '')),
+                        'destino_economico': pm_r1_data.get('destino_economico', pm_predio.get('destino_economico', 'A')),
+                        'area_terreno': str(pm_r1_data.get('area_terreno', pm_predio.get('area_terreno', 0))),
+                        'area_construida': str(pm_r1_data.get('area_construida', pm_predio.get('area_construida', 0))),
+                        'avaluo': str(pm_predio.get('avaluo', 0)),
+                        'matricula': pm_matricula,
+                    }
+                    predios_bloques_preview.append({
+                        "npn": pm_npn,
+                        "propietarios_anteriores": pm_props_ant,
+                        "propietarios_nuevos": pm_props_new,
+                        "datos_anteriores": datos_cancel,
+                        "datos_inscripcion": {**datos_cancel},
+                    })
+
             predio_id = solicitud_preview.get('predio_id', '')
             predio = await db.predios.find_one({"id": predio_id}, {"_id": 0}) if predio_id else {}
             predio = predio or {}
@@ -32581,7 +33271,8 @@ async def preview_solicitud_mutacion(
                 elaboro=solicitud_preview.get('creado_por_nombre', ''),
                 aprobo=current_user.get('full_name', ''),
                 texto_considerando=solicitud_preview.get('texto_considerando'),
-                es_borrador=True
+                es_borrador=True,
+                predios_bloques=predios_bloques_preview,
             )
 
         if not pdf_bytes:
@@ -32840,6 +33531,7 @@ async def ejecutar_accion_solicitud(
                         "justificacion": solicitud.get('observaciones'),
                         "propuesto_por": solicitud.get('creado_por_id'),
                         "texto_considerando": solicitud.get('texto_considerando', ''),
+                        "predios_m1": solicitud.get('predios_m1'),
                     }
                     pdf_result = await generar_resolucion_final(cambio_doc, current_user)
 
@@ -33301,6 +33993,7 @@ async def aprobar_radicado_multiple(
                         "justificacion": solicitud.get('observaciones'),
                         "propuesto_por": solicitud.get('creado_por_id'),
                         "texto_considerando": solicitud.get('texto_considerando', ''),
+                        "predios_m1": solicitud.get('predios_m1'),
                     }
                     pdf_result = await generar_resolucion_final(cambio_doc, current_user)
 
@@ -33474,6 +34167,8 @@ class GenerarResolucionManualRequest(BaseModel):
     propietarios_nuevos: Optional[list] = None
     # Texto personalizado para considerandos
     texto_considerando: Optional[str] = None
+    # Multi-predio M1: lista de {predio_id, propietarios_anteriores, propietarios_nuevos}
+    predios_m1: Optional[list] = None
 
 
 @api_router.post("/resoluciones/generar-manual")
@@ -33789,6 +34484,57 @@ async def generar_resolucion_manual(
             # M1 y demás tipos - usar generador estándar
             from resolucion_pdf_generator import generate_resolucion_pdf
 
+            # Construir predios_bloques si hay multi-predio M1
+            predios_bloques_manual = None
+            if request.predios_m1 and len(request.predios_m1) > 0:
+                predios_bloques_manual = []
+                for pm in request.predios_m1:
+                    pm_id = pm.get("predio_id")
+                    pm_predio = await db.predios.find_one({"id": pm_id}, {"_id": 0}) if pm_id else None
+                    if not pm_predio:
+                        continue
+                    pm_r1_r2 = obtener_datos_r1_r2(pm_predio)
+                    pm_npn = pm_predio.get("codigo_predial_nacional", "")
+                    pm_matricula = pm_r1_r2.get("matricula_inmobiliaria") or pm_predio.get("matricula_inmobiliaria") or ""
+
+                    pm_props_ant = [{
+                        "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                        "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    } for p in pm.get("propietarios_anteriores", [])]
+                    if not pm_props_ant and pm_predio.get("propietarios"):
+                        pm_props_ant = [{
+                            "nombre": p.get("nombre_propietario", ""),
+                            "tipo_documento": p.get("tipo_documento", "CC"),
+                            "documento": formatear_documento(p.get("numero_documento", "")),
+                            "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                        } for p in pm_predio["propietarios"]]
+
+                    pm_props_new = [{
+                        "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
+                        "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                    } for p in pm.get("propietarios_nuevos", [])]
+
+                    pm_datos_cancel = {
+                        'codigo_homologado': pm_r1_r2.get("codigo_homologado") or "",
+                        'direccion': pm_r1_r2.get("direccion") or "",
+                        'destino_economico': pm_r1_r2.get("destino_economico") or "A",
+                        'area_terreno': str(pm_r1_r2.get("area_terreno") or 0),
+                        'area_construida': str(pm_r1_r2.get("area_construida") or 0),
+                        'avaluo': f"${pm_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if pm_r1_r2.get('avaluo') else "$0",
+                        'matricula': pm_matricula,
+                    }
+                    predios_bloques_manual.append({
+                        "npn": pm_npn,
+                        "propietarios_anteriores": pm_props_ant,
+                        "propietarios_nuevos": pm_props_new,
+                        "datos_anteriores": pm_datos_cancel,
+                        "datos_inscripcion": {**pm_datos_cancel},
+                    })
+
             pdf_bytes = generate_resolucion_pdf(
                 numero_resolucion=request.numero_resolucion,
                 fecha_resolucion=fecha_formateada,
@@ -33820,6 +34566,7 @@ async def generar_resolucion_manual(
                 codigo_verificacion=codigo_verificacion_res,
                 verificacion_base_url=VERIFICACION_BASE_URL,
                 texto_considerando=request.texto_considerando,
+                predios_bloques=predios_bloques_manual,
             )
         
         # 7. Guardar el PDF

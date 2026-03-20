@@ -757,38 +757,94 @@ def generar_resolucion_complementacion_pdf(data: dict, es_borrador: bool = False
     dibujar_texto_justificado(texto_articulo1)
     y_position -= 6
 
-    # Propietarios del data (enviados desde backend)
-    props_anteriores_data = data.get('propietarios_anteriores', None)
-    props_nuevos_data = data.get('propietarios_nuevos', None)
-    matricula_nueva_data = data.get('matricula_nueva', None)
-    direccion_nueva_data = data.get('direccion_nueva', None)
-    destino_nuevo_data = data.get('destino_nuevo', None)
+    # Multi-predio o single-predio
+    predios_complementacion = data.get('predios_complementacion', None)
 
-    # Tabla CANCELACIÓN (Datos anteriores)
-    y_position = dibujar_tabla_predio_complementacion(
-        predio,
-        es_cancelacion=True,
-        vigencia=vigencia_cancelacion,
-        area_terreno_val=area_terreno,
-        area_construida_val=area_construida,
-        avaluo_val=avaluo,
-        propietarios_override=props_anteriores_data
-    )
-    y_position -= 5
+    if predios_complementacion and len(predios_complementacion) > 0:
+        # Multi-predio: iterar cada bloque
+        for idx_bloque, bloque_comp in enumerate(predios_complementacion):
+            if idx_bloque > 0:
+                # Separador visual entre bloques
+                y_position -= 5
+                verificar_espacio(20)
+                c.setStrokeColor(VERDE_INSTITUCIONAL)
+                c.setLineWidth(1.5)
+                c.line(MARGIN_LEFT, y_position, MARGIN_LEFT + CONTENT_WIDTH, y_position)
+                c.setStrokeColor(NEGRO)
+                c.setLineWidth(0.5)
+                y_position -= 10
 
-    # Tabla INSCRIPCIÓN (Datos nuevos/complementados)
-    y_position = dibujar_tabla_predio_complementacion(
-        predio,
-        es_cancelacion=False,
-        vigencia=vigencia_inscripcion,
-        area_terreno_val=area_terreno_nueva,
-        area_construida_val=area_construida_nueva,
-        avaluo_val=avaluo_nuevo,
-        propietarios_override=props_nuevos_data,
-        matricula_override=matricula_nueva_data,
-        direccion_override=direccion_nueva_data,
-        destino_override=destino_nuevo_data
-    )
+            bloque_predio = bloque_comp.get('predio', predio)
+            bloque_props_ant = bloque_comp.get('propietarios_anteriores', None)
+            bloque_props_new = bloque_comp.get('propietarios_nuevos', None)
+            bloque_matricula = bloque_comp.get('matricula_nueva', None)
+            bloque_direccion = bloque_comp.get('direccion_nueva', None)
+            bloque_destino = bloque_comp.get('destino_nuevo', None)
+            bloque_area_terreno = bloque_comp.get('area_terreno_anterior', area_terreno)
+            bloque_area_construida = bloque_comp.get('area_construida_anterior', area_construida)
+            bloque_avaluo = bloque_comp.get('avaluo_anterior', avaluo)
+            bloque_area_terreno_nueva = bloque_comp.get('area_terreno_nueva', area_terreno_nueva)
+            bloque_area_construida_nueva = bloque_comp.get('area_construida_nueva', area_construida_nueva)
+            bloque_avaluo_nuevo = bloque_comp.get('avaluo_nuevo', avaluo_nuevo)
+
+            # CANCELACIÓN
+            y_position = dibujar_tabla_predio_complementacion(
+                bloque_predio,
+                es_cancelacion=True,
+                vigencia=vigencia_cancelacion,
+                area_terreno_val=bloque_area_terreno,
+                area_construida_val=bloque_area_construida,
+                avaluo_val=bloque_avaluo,
+                propietarios_override=bloque_props_ant
+            )
+            y_position -= 5
+
+            # INSCRIPCIÓN
+            y_position = dibujar_tabla_predio_complementacion(
+                bloque_predio,
+                es_cancelacion=False,
+                vigencia=vigencia_inscripcion,
+                area_terreno_val=bloque_area_terreno_nueva,
+                area_construida_val=bloque_area_construida_nueva,
+                avaluo_val=bloque_avaluo_nuevo,
+                propietarios_override=bloque_props_new,
+                matricula_override=bloque_matricula,
+                direccion_override=bloque_direccion,
+                destino_override=bloque_destino
+            )
+    else:
+        # Single-predio: flujo original
+        props_anteriores_data = data.get('propietarios_anteriores', None)
+        props_nuevos_data = data.get('propietarios_nuevos', None)
+        matricula_nueva_data = data.get('matricula_nueva', None)
+        direccion_nueva_data = data.get('direccion_nueva', None)
+        destino_nuevo_data = data.get('destino_nuevo', None)
+
+        # Tabla CANCELACIÓN (Datos anteriores)
+        y_position = dibujar_tabla_predio_complementacion(
+            predio,
+            es_cancelacion=True,
+            vigencia=vigencia_cancelacion,
+            area_terreno_val=area_terreno,
+            area_construida_val=area_construida,
+            avaluo_val=avaluo,
+            propietarios_override=props_anteriores_data
+        )
+        y_position -= 5
+
+        # Tabla INSCRIPCIÓN (Datos nuevos/complementados)
+        y_position = dibujar_tabla_predio_complementacion(
+            predio,
+            es_cancelacion=False,
+            vigencia=vigencia_inscripcion,
+            area_terreno_val=area_terreno_nueva,
+            area_construida_val=area_construida_nueva,
+            avaluo_val=avaluo_nuevo,
+            propietarios_override=props_nuevos_data,
+            matricula_override=matricula_nueva_data,
+            direccion_override=direccion_nueva_data,
+            destino_override=destino_nuevo_data
+        )
     # =====================
     # FECHAS DE INSCRIPCIÓN CATASTRAL (si existen)
     # =====================

@@ -92,6 +92,8 @@ def generate_resolucion_pdf(
     # Fechas de inscripción catastral
     fechas_inscripcion: list = None,
     es_borrador: bool = False,
+    # Multi-predio: lista de bloques, cada uno con sus propios datos de cancelación/inscripción
+    predios_bloques: list = None,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
@@ -566,165 +568,184 @@ def generate_resolucion_pdf(
         return y
     
     # ============================================================
-    # TABLA CANCELACIÓN - Propietarios anteriores
+    # HELPER: Dibujar un bloque CANCELACIÓN + INSCRIPCIÓN para un predio
     # ============================================================
-    y = check_page_break(y, 80)
-    
-    # Título CANCELACIÓN
-    c.setFillColor(verde_institucional)
-    c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
-    c.setFillColor(blanco)
-    c.setFont(font_bold, fuente_tabla + 1)
-    c.drawCentredString(width/2, y - 12, "CANCELACIÓN")
-    y -= 18
-    
-    # Fila header: N° PREDIAL | APELLIDOS Y NOMBRES | T.D. | NRO. DOC. | E. CIVIL
-    cancel_row_h = 20
-    c.setFillColor(colors.HexColor('#e8e8e8'))
-    c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=1, stroke=1)
-    c.setFillColor(negro)
-    c.setFont(font_bold, fuente_tabla - 1)
+    def dibujar_bloque_cancelacion_inscripcion(y, bloque_npn, bloque_props_ant, bloque_props_new, bloque_datos_cancel, bloque_datos_inscrip):
+        """Dibuja las tablas de CANCELACIÓN e INSCRIPCIÓN para un predio."""
+        cancel_row_h = 20
+        cancel_cols = [content_width * 0.42, content_width * 0.27, content_width * 0.06, content_width * 0.17, content_width * 0.08]
+        cancel_headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "T.D.", "NRO. DOC.", "E. CIVIL"]
 
-    # Columnas redistribuidas: más espacio a NPN y Nombre, menos a Tipo Doc y Estado
-    cancel_cols = [content_width * 0.42, content_width * 0.27, content_width * 0.06, content_width * 0.17, content_width * 0.08]
-    cancel_headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "T.D.", "NRO. DOC.", "E. CIVIL"]
-    x = left_margin
-    for i, header in enumerate(cancel_headers):
-        c.drawCentredString(x + cancel_cols[i]/2, y - cancel_row_h/2 - 3, header)
-        c.rect(x, y - cancel_row_h, cancel_cols[i], cancel_row_h, fill=0, stroke=1)
-        x += cancel_cols[i]
-    y -= cancel_row_h
+        # --- CANCELACIÓN ---
+        y = check_page_break(y, 80)
+        c.setFillColor(verde_institucional)
+        c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
+        c.setFillColor(blanco)
+        c.setFont(font_bold, fuente_tabla + 1)
+        c.drawCentredString(width/2, y - 12, "CANCELACIÓN")
+        y -= 18
 
-    # Datos de propietarios anteriores (cancelación)
-    c.setFont(font_normal, fuente_tabla - 1)
-    if propietarios_anteriores:
-        for prop in propietarios_anteriores:
-            y = check_page_break(y, cancel_row_h + 5)
-            x = left_margin
-            # N° PREDIAL
-            c.rect(x, y - cancel_row_h, cancel_cols[0], cancel_row_h, fill=0, stroke=1)
-            draw_cell_text(c, npn or "", x, cancel_cols[0], y, cancel_row_h, default_fs=7)
-            x += cancel_cols[0]
-            # APELLIDOS Y NOMBRES
-            c.rect(x, y - cancel_row_h, cancel_cols[1], cancel_row_h, fill=0, stroke=1)
-            nombre = prop.get('nombre', '')
-            draw_cell_text(c, nombre, x, cancel_cols[1], y, cancel_row_h, default_fs=7)
-            x += cancel_cols[1]
-            # TIPO DOC.
-            c.rect(x, y - cancel_row_h, cancel_cols[2], cancel_row_h, fill=0, stroke=1)
-            tipo_doc = prop.get('tipo_documento', 'CC')
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[2]/2, y - cancel_row_h/2 - 2, tipo_doc)
-            x += cancel_cols[2]
-            # NRO. DOC.
-            c.rect(x, y - cancel_row_h, cancel_cols[3], cancel_row_h, fill=0, stroke=1)
-            nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
-            nro_doc_padded = str(nro_doc).replace('.', '').replace(',', '').zfill(12) if nro_doc else ''
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[3]/2, y - cancel_row_h/2 - 2, nro_doc_padded)
-            x += cancel_cols[3]
-            # ESTADO CIVIL
-            c.rect(x, y - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
-            estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[4]/2, y - cancel_row_h/2 - 2, estado_civil)
-            y -= cancel_row_h
-    else:
-        y = check_page_break(y, cancel_row_h + 5)
-        c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=0, stroke=1)
-        c.drawCentredString(left_margin + content_width/2, y - cancel_row_h/2 - 2, "Sin datos de propietario anterior")
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=1, stroke=1)
+        c.setFillColor(negro)
+        c.setFont(font_bold, fuente_tabla - 1)
+        x = left_margin
+        for i, header in enumerate(cancel_headers):
+            c.drawCentredString(x + cancel_cols[i]/2, y - cancel_row_h/2 - 3, header)
+            c.rect(x, y - cancel_row_h, cancel_cols[i], cancel_row_h, fill=0, stroke=1)
+            x += cancel_cols[i]
         y -= cancel_row_h
 
-    # Datos del predio en CANCELACIÓN (usa datos ANTERIORES)
-    datos_cancelacion = {
-        'codigo_homologado': codigo_homologado_anterior if codigo_homologado_anterior else codigo_homologado,
-        'direccion': direccion_anterior if direccion_anterior else direccion,
-        'destino_economico': destino_economico_anterior if destino_economico_anterior else destino_economico,
-        'area_terreno': area_terreno_anterior if area_terreno_anterior else area_terreno,
-        'area_construida': area_construida_anterior if area_construida_anterior else area_construida,
-        'avaluo': avaluo_anterior if avaluo_anterior else avaluo,
-        'matricula': matricula_anterior if matricula_anterior else matricula_inmobiliaria,
-    }
-    y = dibujar_datos_predio(y, datos_cancelacion, es_cancelacion=True)
-    y -= 8
-    
-    # ============================================================
-    # TABLA INSCRIPCIÓN - Nuevos propietarios + datos del predio
-    # ============================================================
-    y = check_page_break(y, 100)
-    
-    # Título INSCRIPCIÓN
-    c.setFillColor(verde_institucional)
-    c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
-    c.setFillColor(blanco)
-    c.setFont(font_bold, fuente_tabla + 1)
-    c.drawCentredString(width/2, y - 12, "INSCRIPCIÓN")
-    y -= 18
-    
-    # Fila header: N° PREDIAL | APELLIDOS Y NOMBRES | T.D. | NRO. DOC. | E. CIVIL
-    c.setFillColor(colors.HexColor('#e8e8e8'))
-    c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=1, stroke=1)
-    c.setFillColor(negro)
-    c.setFont(font_bold, fuente_tabla - 1)
-
-    x = left_margin
-    for i, header in enumerate(cancel_headers):
-        c.drawCentredString(x + cancel_cols[i]/2, y - cancel_row_h/2 - 3, header)
-        c.rect(x, y - cancel_row_h, cancel_cols[i], cancel_row_h, fill=0, stroke=1)
-        x += cancel_cols[i]
-    y -= cancel_row_h
-
-    # Datos de nuevos propietarios (inscripción)
-    c.setFont(font_normal, fuente_tabla - 1)
-    if propietarios_nuevos:
-        for prop in propietarios_nuevos:
+        c.setFont(font_normal, fuente_tabla - 1)
+        if bloque_props_ant:
+            for prop in bloque_props_ant:
+                y = check_page_break(y, cancel_row_h + 5)
+                x = left_margin
+                c.rect(x, y - cancel_row_h, cancel_cols[0], cancel_row_h, fill=0, stroke=1)
+                draw_cell_text(c, bloque_npn or "", x, cancel_cols[0], y, cancel_row_h, default_fs=7)
+                x += cancel_cols[0]
+                c.rect(x, y - cancel_row_h, cancel_cols[1], cancel_row_h, fill=0, stroke=1)
+                draw_cell_text(c, prop.get('nombre', ''), x, cancel_cols[1], y, cancel_row_h, default_fs=7)
+                x += cancel_cols[1]
+                c.rect(x, y - cancel_row_h, cancel_cols[2], cancel_row_h, fill=0, stroke=1)
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[2]/2, y - cancel_row_h/2 - 2, prop.get('tipo_documento', 'CC'))
+                x += cancel_cols[2]
+                c.rect(x, y - cancel_row_h, cancel_cols[3], cancel_row_h, fill=0, stroke=1)
+                nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
+                nro_doc_padded = str(nro_doc).replace('.', '').replace(',', '').zfill(12) if nro_doc else ''
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[3]/2, y - cancel_row_h/2 - 2, nro_doc_padded)
+                x += cancel_cols[3]
+                c.rect(x, y - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
+                estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[4]/2, y - cancel_row_h/2 - 2, estado_civil)
+                y -= cancel_row_h
+        else:
             y = check_page_break(y, cancel_row_h + 5)
-            x = left_margin
-            # N° PREDIAL
-            c.rect(x, y - cancel_row_h, cancel_cols[0], cancel_row_h, fill=0, stroke=1)
-            draw_cell_text(c, npn or "", x, cancel_cols[0], y, cancel_row_h, default_fs=7)
-            x += cancel_cols[0]
-            # APELLIDOS Y NOMBRES
-            c.rect(x, y - cancel_row_h, cancel_cols[1], cancel_row_h, fill=0, stroke=1)
-            nombre = prop.get('nombre', '')
-            draw_cell_text(c, nombre, x, cancel_cols[1], y, cancel_row_h, default_fs=7)
-            x += cancel_cols[1]
-            # TIPO DOC.
-            c.rect(x, y - cancel_row_h, cancel_cols[2], cancel_row_h, fill=0, stroke=1)
-            tipo_doc = prop.get('tipo_documento', 'CC')
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[2]/2, y - cancel_row_h/2 - 2, tipo_doc)
-            x += cancel_cols[2]
-            # NRO. DOC.
-            c.rect(x, y - cancel_row_h, cancel_cols[3], cancel_row_h, fill=0, stroke=1)
-            nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
-            nro_doc_padded = str(nro_doc).replace('.', '').replace(',', '').zfill(12) if nro_doc else ''
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[3]/2, y - cancel_row_h/2 - 2, nro_doc_padded)
-            x += cancel_cols[3]
-            # ESTADO CIVIL
-            c.rect(x, y - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
-            estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[4]/2, y - cancel_row_h/2 - 2, estado_civil)
+            c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=0, stroke=1)
+            c.drawCentredString(left_margin + content_width/2, y - cancel_row_h/2 - 2, "Sin datos de propietario anterior")
             y -= cancel_row_h
-    else:
-        y = check_page_break(y, cancel_row_h + 5)
-        c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=0, stroke=1)
-        c.drawCentredString(left_margin + content_width/2, y - cancel_row_h/2 - 2, "Sin datos de nuevo propietario")
+
+        y = dibujar_datos_predio(y, bloque_datos_cancel, es_cancelacion=True)
+        y -= 8
+
+        # --- INSCRIPCIÓN ---
+        y = check_page_break(y, 100)
+        c.setFillColor(verde_institucional)
+        c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
+        c.setFillColor(blanco)
+        c.setFont(font_bold, fuente_tabla + 1)
+        c.drawCentredString(width/2, y - 12, "INSCRIPCIÓN")
+        y -= 18
+
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=1, stroke=1)
+        c.setFillColor(negro)
+        c.setFont(font_bold, fuente_tabla - 1)
+        x = left_margin
+        for i, header in enumerate(cancel_headers):
+            c.drawCentredString(x + cancel_cols[i]/2, y - cancel_row_h/2 - 3, header)
+            c.rect(x, y - cancel_row_h, cancel_cols[i], cancel_row_h, fill=0, stroke=1)
+            x += cancel_cols[i]
         y -= cancel_row_h
 
-    # Datos del predio en INSCRIPCIÓN (usa datos NUEVOS/ACTUALES)
-    datos_inscripcion = {
-        'codigo_homologado': codigo_homologado,
-        'direccion': direccion,
-        'destino_economico': destino_economico,
-        'area_terreno': area_terreno,
-        'area_construida': area_construida,
-        'avaluo': avaluo,
-        'matricula': matricula_inmobiliaria,
-    }
-    y = dibujar_datos_predio(y, datos_inscripcion, es_cancelacion=False)
+        c.setFont(font_normal, fuente_tabla - 1)
+        if bloque_props_new:
+            for prop in bloque_props_new:
+                y = check_page_break(y, cancel_row_h + 5)
+                x = left_margin
+                c.rect(x, y - cancel_row_h, cancel_cols[0], cancel_row_h, fill=0, stroke=1)
+                draw_cell_text(c, bloque_npn or "", x, cancel_cols[0], y, cancel_row_h, default_fs=7)
+                x += cancel_cols[0]
+                c.rect(x, y - cancel_row_h, cancel_cols[1], cancel_row_h, fill=0, stroke=1)
+                draw_cell_text(c, prop.get('nombre', ''), x, cancel_cols[1], y, cancel_row_h, default_fs=7)
+                x += cancel_cols[1]
+                c.rect(x, y - cancel_row_h, cancel_cols[2], cancel_row_h, fill=0, stroke=1)
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[2]/2, y - cancel_row_h/2 - 2, prop.get('tipo_documento', 'CC'))
+                x += cancel_cols[2]
+                c.rect(x, y - cancel_row_h, cancel_cols[3], cancel_row_h, fill=0, stroke=1)
+                nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
+                nro_doc_padded = str(nro_doc).replace('.', '').replace(',', '').zfill(12) if nro_doc else ''
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[3]/2, y - cancel_row_h/2 - 2, nro_doc_padded)
+                x += cancel_cols[3]
+                c.rect(x, y - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
+                estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[4]/2, y - cancel_row_h/2 - 2, estado_civil)
+                y -= cancel_row_h
+        else:
+            y = check_page_break(y, cancel_row_h + 5)
+            c.rect(left_margin, y - cancel_row_h, content_width, cancel_row_h, fill=0, stroke=1)
+            c.drawCentredString(left_margin + content_width/2, y - cancel_row_h/2 - 2, "Sin datos de nuevo propietario")
+            y -= cancel_row_h
+
+        y = dibujar_datos_predio(y, bloque_datos_inscrip, es_cancelacion=False)
+        return y
+
+    # ============================================================
+    # DIBUJAR BLOQUES DE CANCELACIÓN/INSCRIPCIÓN (multi-predio o single)
+    # ============================================================
+    if predios_bloques and len(predios_bloques) > 0:
+        # Multi-predio: iterar cada bloque con separador visual
+        for idx_bloque, bloque in enumerate(predios_bloques):
+            if idx_bloque > 0:
+                # Separador visual entre bloques
+                y -= 5
+                y = check_page_break(y, 20)
+                c.setStrokeColor(verde_institucional)
+                c.setLineWidth(1.5)
+                c.line(left_margin, y, left_margin + content_width, y)
+                c.setStrokeColor(negro)
+                c.setLineWidth(0.5)
+                y -= 10
+
+            bloque_npn = bloque.get('npn', npn)
+            bloque_props_ant = bloque.get('propietarios_anteriores', [])
+            bloque_props_new = bloque.get('propietarios_nuevos', [])
+            bloque_datos_cancel = bloque.get('datos_anteriores', {
+                'codigo_homologado': codigo_homologado_anterior or codigo_homologado,
+                'direccion': direccion_anterior or direccion,
+                'destino_economico': destino_economico_anterior or destino_economico,
+                'area_terreno': area_terreno_anterior or area_terreno,
+                'area_construida': area_construida_anterior or area_construida,
+                'avaluo': avaluo_anterior or avaluo,
+                'matricula': matricula_anterior or matricula_inmobiliaria,
+            })
+            bloque_datos_inscrip = bloque.get('datos_inscripcion', {
+                'codigo_homologado': codigo_homologado,
+                'direccion': direccion,
+                'destino_economico': destino_economico,
+                'area_terreno': area_terreno,
+                'area_construida': area_construida,
+                'avaluo': avaluo,
+                'matricula': matricula_inmobiliaria,
+            })
+            y = dibujar_bloque_cancelacion_inscripcion(y, bloque_npn, bloque_props_ant, bloque_props_new, bloque_datos_cancel, bloque_datos_inscrip)
+    else:
+        # Single-predio: flujo original
+        datos_cancelacion = {
+            'codigo_homologado': codigo_homologado_anterior if codigo_homologado_anterior else codigo_homologado,
+            'direccion': direccion_anterior if direccion_anterior else direccion,
+            'destino_economico': destino_economico_anterior if destino_economico_anterior else destino_economico,
+            'area_terreno': area_terreno_anterior if area_terreno_anterior else area_terreno,
+            'area_construida': area_construida_anterior if area_construida_anterior else area_construida,
+            'avaluo': avaluo_anterior if avaluo_anterior else avaluo,
+            'matricula': matricula_anterior if matricula_anterior else matricula_inmobiliaria,
+        }
+        datos_inscripcion_single = {
+            'codigo_homologado': codigo_homologado,
+            'direccion': direccion,
+            'destino_economico': destino_economico,
+            'area_terreno': area_terreno,
+            'area_construida': area_construida,
+            'avaluo': avaluo,
+            'matricula': matricula_inmobiliaria,
+        }
+        y = dibujar_bloque_cancelacion_inscripcion(y, npn, propietarios_anteriores, propietarios_nuevos, datos_cancelacion, datos_inscripcion_single)
 
     # =====================
     # FECHAS DE INSCRIPCIÓN CATASTRAL (si existen)
