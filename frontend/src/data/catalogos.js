@@ -42,7 +42,7 @@ export const TIPOS_TRAMITE = [
   },
   {
     id: 'mutacion_sexta',
-    nombre: 'Mutación Sexta',
+    nombre: 'Rectificación de Área',
     descripcion: 'Rectificación de área',
     subOpciones: [
       { id: 'rectificacion_catastral', nombre: 'Rectificación de área catastral' },

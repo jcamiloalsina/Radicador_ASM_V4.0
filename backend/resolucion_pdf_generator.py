@@ -91,6 +91,7 @@ def generate_resolucion_pdf(
     texto_considerando: str = None,
     # Fechas de inscripción catastral
     fechas_inscripcion: list = None,
+    es_borrador: bool = False,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
@@ -202,10 +203,23 @@ def generate_resolucion_pdf(
                        preserveAspectRatio=True, mask='auto')
             c.restoreState()
     
+    def draw_borrador_watermark():
+        """Dibuja marca de agua BORRADOR en diagonal rojo semitransparente"""
+        if es_borrador:
+            c.saveState()
+            c.setFillColor(colors.HexColor('#FF0000'))
+            c.setFillAlpha(0.15)
+            c.setFont('Helvetica-Bold', 80)
+            c.translate(width / 2, height / 2)
+            c.rotate(45)
+            c.drawCentredString(0, 0, "BORRADOR")
+            c.restoreState()
+
     def draw_header():
         """Dibuja el encabezado IDÉNTICO al certificado catastral"""
         # Primero dibujar la marca de agua (detrás del contenido)
         draw_watermark()
+        draw_borrador_watermark()
         
         if imagenes_ok and encabezado_img:
             encabezado_width = content_width + 1 * cm

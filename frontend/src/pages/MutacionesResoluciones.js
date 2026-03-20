@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import {
   Users, User, MapPin, DollarSign, Calendar, Filter,
   ChevronDown, Trash2, Edit, Loader2, Lock, Layers,
   Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet,
-  Unlock, AlertTriangle
+  Unlock, AlertTriangle, CheckCircle, ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -538,7 +538,16 @@ export default function MutacionesResoluciones() {
     correoSolicitante: ''
   });
   const [emailSent, setEmailSent] = useState(false);
-  
+
+  // Estado para previsualización de PDF borrador
+  const [showBorradorPreview, setShowBorradorPreview] = useState(false);
+  const [borradorPdfBase64, setBorradorPdfBase64] = useState('');
+  const [borradorSolicitudId, setBorradorSolicitudId] = useState(null);
+  const [borradorDatosEditados, setBorradorDatosEditados] = useState({});
+  const [borradorTipo, setBorradorTipo] = useState('');
+  const [generandoBorrador, setGenerandoBorrador] = useState(false);
+  const [aprobandoBorrador, setAprobandoBorrador] = useState(false);
+
   // Determinar si el usuario puede aprobar directamente
   const puedeAprobar = user?.role === 'coordinador' || 
                        user?.role === 'administrador' || 
@@ -1596,6 +1605,108 @@ export default function MutacionesResoluciones() {
       console.error('Error actualizando estado de mutación en múltiples:', err);
     }
     setMutacionEnEdicion(null);
+  };
+
+  // ===== PREVISUALIZACIÓN DE PDF BORRADOR (Coordinador) =====
+  const handleBorradorPreview = async (solicitudId, tipo) => {
+    setGenerandoBorrador(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/preview`, {
+        datos_editados: borradorDatosEditados
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.pdf_base64) {
+        setBorradorPdfBase64(response.data.pdf_base64);
+        setBorradorSolicitudId(solicitudId);
+        setBorradorTipo(tipo);
+        setShowBorradorPreview(true);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al generar previsualización');
+    } finally {
+      setGenerandoBorrador(false);
+    }
+  };
+
+  const handleConfirmarAprobacionBorrador = async () => {
+    setAprobandoBorrador(true);
+    try {
+      const token = localStorage.getItem('token');
+      const hasDatos = Object.keys(borradorDatosEditados).length > 0;
+      const response = await axios.post(`${API}/solicitudes-mutacion/${borradorSolicitudId}/accion`, {
+        accion: 'aprobar',
+        datos_editados: hasDatos ? borradorDatosEditados : null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      toast.success('Resolución aprobada exitosamente');
+
+      if (response.data.pdf_url) {
+        const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+        const numRes = response.data.numero_resolucion || 'Resolución';
+        setPdfViewerData({
+          url: pdfFullUrl,
+          title: `Resolución ${borradorTipo} - ${numRes}`,
+          fileName: `${numRes.replace(/\//g, '-')}.pdf`,
+          resolucionId: null,
+          radicado: '',
+          correoSolicitante: ''
+        });
+        setEmailSent(false);
+        setShowPDFViewer(true);
+
+        // Si estamos en contexto de múltiples, actualizar
+        await actualizarMutacionEnMultiples(token, response.data);
+      }
+
+      setShowBorradorPreview(false);
+      setBorradorPdfBase64('');
+      setBorradorDatosEditados({});
+      setBorradorSolicitudId(null);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al aprobar');
+    } finally {
+      setAprobandoBorrador(false);
+    }
+  };
+
+  const updateBorradorField = (key, value) => {
+    setBorradorDatosEditados(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Función genérica: crea solicitud sin auto-aprobar, luego muestra preview
+  const crearYPrevisualizar = async (tipo, payload, resetFn) => {
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+        ...payload,
+        skip_auto_approve: true
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        const solicitudId = response.data.solicitud_id;
+        toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+
+        // Limpiar formulario y cerrar diálogo
+        if (resetFn) resetFn();
+        setShowMutacionDialog(false);
+
+        // Generar preview
+        setBorradorDatosEditados({});
+        setBorradorTipo(tipo);
+        await handleBorradorPreview(solicitudId, tipo);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || `Error al crear solicitud ${tipo}`);
+    } finally {
+      setGenerando(false);
+    }
   };
 
   // Generar resolución M1
@@ -2857,22 +2968,33 @@ export default function MutacionesResoluciones() {
         dataToSend.predios_inscritos = [m2Data.predio_resultante];
       }
       
+      // Si es coordinador, crear sin auto-aprobar para previsualizar
+      if (puedeAprobar) {
+        dataToSend.skip_auto_approve = true;
+      }
+
       const response = await axios.post(`${API}/solicitudes-mutacion`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
-        // Verificar si fue aprobación directa o quedó pendiente
-        if (response.data.aprobacion_directa && response.data.pdf_url) {
+        if (puedeAprobar && !response.data.aprobacion_directa) {
+          // Coordinador: mostrar previsualización antes de aprobar
+          toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+          resetFormularioM2();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+          setBorradorDatosEditados({});
+          setBorradorTipo('M2');
+          await handleBorradorPreview(response.data.solicitud_id, 'M2');
+        } else if (response.data.aprobacion_directa && response.data.pdf_url) {
           toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
-          
-          // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
+
           if (codigosReservados.length > 0) {
             await confirmarUsoCodigos(codigosReservados);
             setCodigosReservados([]);
           }
-          
-          // Mostrar PDF en popup
+
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -2884,24 +3006,19 @@ export default function MutacionesResoluciones() {
           });
           setEmailSent(false);
           setShowPDFViewer(true);
-        } else {
-          // Quedó pendiente de aprobación
-          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
-        }
-        
-        // Si estamos en contexto de múltiples, actualizar estado de la mutación
-        if (response.data.aprobacion_directa) {
           await actualizarMutacionEnMultiples(token, response.data);
+          resetFormularioM2();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+        } else {
+          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
+          resetFormularioM2();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
         }
-
-        // Limpiar formulario
-        resetFormularioM2();
-        setShowMutacionDialog(false);
-        setTipoMutacionSeleccionado(null);
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error generando resolución');
-      // No liberamos los códigos aquí porque el usuario puede reintentar
     } finally {
       setGenerando(false);
     }
@@ -3081,7 +3198,7 @@ export default function MutacionesResoluciones() {
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+      const m3Payload = {
         tipo: 'M3',
         subtipo: m3Data.subtipo,
         municipio: m3Data.municipio,
@@ -3096,17 +3213,24 @@ export default function MutacionesResoluciones() {
         observaciones: m3Data.observaciones || '',
         solicitante: m3Data.solicitante || { nombre: '', documento: '' },
         calidad_solicitante: m3Data.calidad_solicitante,
-        texto_considerando: m3Data.texto_considerando || ''
-      }, {
+        texto_considerando: m3Data.texto_considerando || '',
+        skip_auto_approve: puedeAprobar
+      };
+      const response = await axios.post(`${API}/solicitudes-mutacion`, m3Payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
-        // Verificar si fue aprobación directa o quedó pendiente
-        if (response.data.aprobacion_directa && response.data.pdf_url) {
+        if (puedeAprobar && !response.data.aprobacion_directa) {
+          toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+          resetFormularioM3();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+          setBorradorDatosEditados({});
+          setBorradorTipo('M3');
+          await handleBorradorPreview(response.data.solicitud_id, 'M3');
+        } else if (response.data.aprobacion_directa && response.data.pdf_url) {
           toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
-          
-          // Mostrar PDF en popup
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -3118,20 +3242,16 @@ export default function MutacionesResoluciones() {
           });
           setEmailSent(false);
           setShowPDFViewer(true);
-        } else {
-          // Quedó pendiente de aprobación
-          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
-        }
-        
-        // Si estamos en contexto de múltiples, actualizar estado de la mutación
-        if (response.data.aprobacion_directa) {
           await actualizarMutacionEnMultiples(token, response.data);
+          resetFormularioM3();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+        } else {
+          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
+          resetFormularioM3();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
         }
-
-        // Limpiar formulario
-        resetFormularioM3();
-        setShowMutacionDialog(false);
-        setTipoMutacionSeleccionado(null);
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error generando resolución M3');
@@ -3332,14 +3452,23 @@ export default function MutacionesResoluciones() {
         fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
+      if (puedeAprobar) payload.skip_auto_approve = true;
+
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
-        toast.success(response.data.mensaje || 'Solicitud M4 procesada exitosamente');
-        
-        if (response.data.pdf_url) {
+        if (puedeAprobar && !response.data.aprobacion_directa) {
+          toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+          resetFormularioM4();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+          setBorradorDatosEditados({});
+          setBorradorTipo('M4');
+          await handleBorradorPreview(response.data.solicitud_id, 'M4');
+        } else if (response.data.pdf_url) {
+          toast.success(response.data.mensaje || 'Solicitud M4 procesada exitosamente');
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -3347,15 +3476,14 @@ export default function MutacionesResoluciones() {
             numero: response.data.numero_resolucion
           });
           setShowPDFViewer(true);
-        }
-        
-        // Si estamos en contexto de múltiples, actualizar estado de la mutación
-        if (response.data.pdf_url) {
           await actualizarMutacionEnMultiples(token, response.data);
+          resetFormularioM4();
+          cargarHistorialResoluciones();
+        } else {
+          toast.success(response.data.mensaje || 'Solicitud M4 procesada exitosamente');
+          resetFormularioM4();
+          cargarHistorialResoluciones();
         }
-
-        resetFormularioM4();
-        cargarHistorialResoluciones();
       } else {
         toast.error(response.data.mensaje || 'Error al procesar la solicitud');
       }
@@ -3511,31 +3639,38 @@ export default function MutacionesResoluciones() {
         fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
+      if (puedeAprobar) payload.skip_auto_approve = true;
+
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
-        toast.success(response.data.mensaje || 'Solicitud M5 procesada exitosamente');
-        
-        if (response.data.pdf_url) {
+        if (puedeAprobar && !response.data.aprobacion_directa) {
+          toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+          resetM5Form();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+          setBorradorDatosEditados({});
+          setBorradorTipo('M5');
+          await handleBorradorPreview(response.data.solicitud_id, 'M5');
+        } else if (response.data.pdf_url) {
+          toast.success(response.data.mensaje || 'Solicitud M5 procesada exitosamente');
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
             title: `Resolución ${response.data.numero_resolucion}`,
             numero: response.data.numero_resolucion
           });
-          setShowPdfViewer(true);
-        }
-        
-        // Si estamos en contexto de múltiples, actualizar estado de la mutación
-        if (response.data.pdf_url) {
+          setShowPDFViewer(true);
           await actualizarMutacionEnMultiples(token, response.data);
+          resetM5Form();
+          setShowMutacionDialog(false);
+        } else {
+          toast.success(response.data.mensaje || 'Solicitud M5 procesada exitosamente');
+          resetM5Form();
+          setShowMutacionDialog(false);
         }
-
-        // Limpiar formulario
-        resetM5Form();
-        setShowMutacionDialog(false);
       } else {
         toast.error(response.data.mensaje || 'Error al procesar la solicitud');
       }
@@ -3836,14 +3971,23 @@ export default function MutacionesResoluciones() {
         fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
+      if (puedeAprobar) payload.skip_auto_approve = true;
+
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
-        toast.success(response.data.mensaje || 'Solicitud de Rectificación de Área procesada exitosamente');
-        
-        if (response.data.pdf_url) {
+        if (puedeAprobar && !response.data.aprobacion_directa) {
+          toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+          resetRectificacionForm();
+          setShowMutacionDialog(false);
+          setTipoMutacionSeleccionado(null);
+          setBorradorDatosEditados({});
+          setBorradorTipo('RECTIFICACION_AREA');
+          await handleBorradorPreview(response.data.solicitud_id, 'RECTIFICACION_AREA');
+        } else if (response.data.pdf_url) {
+          toast.success(response.data.mensaje || 'Solicitud de Rectificación procesada exitosamente');
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -3854,16 +3998,14 @@ export default function MutacionesResoluciones() {
           });
           setEmailSent(false);
           setShowPDFViewer(true);
-        }
-        
-        // Si estamos en contexto de múltiples, actualizar estado de la mutación
-        if (response.data.pdf_url) {
           await actualizarMutacionEnMultiples(token, response.data);
+          resetRectificacionForm();
+          setShowMutacionDialog(false);
+        } else {
+          toast.success(response.data.mensaje || 'Solicitud procesada exitosamente');
+          resetRectificacionForm();
+          setShowMutacionDialog(false);
         }
-
-        // Limpiar formulario
-        resetRectificacionForm();
-        setShowMutacionDialog(false);
       } else {
         toast.error(response.data.mensaje || 'Error al procesar la solicitud');
       }
@@ -3946,6 +4088,8 @@ export default function MutacionesResoluciones() {
         fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
+      if (puedeAprobar) payload.skip_auto_approve = true;
+
       const response = await axios.post(
         `${API}/solicitudes-mutacion`,
         payload,
@@ -3953,10 +4097,15 @@ export default function MutacionesResoluciones() {
       );
 
       if (response.data.exito || response.data.success) {
-        toast.success(response.data.mensaje || 'Solicitud de Complementación procesada exitosamente');
-
-        // Mostrar PDF en popup si se generó
-        if (response.data.pdf_url) {
+        if (puedeAprobar && !response.data.aprobacion_directa) {
+          toast.success(`Solicitud ${response.data.radicado} creada. Generando previsualización...`);
+          resetComplementacionForm();
+          setTipoMutacionSeleccionado(null);
+          setBorradorDatosEditados({});
+          setBorradorTipo('COMPLEMENTACION');
+          await handleBorradorPreview(response.data.solicitud_id, 'COMPLEMENTACION');
+        } else if (response.data.pdf_url) {
+          toast.success(response.data.mensaje || 'Solicitud de Complementación procesada exitosamente');
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -3968,16 +4117,18 @@ export default function MutacionesResoluciones() {
           });
           setEmailSent(false);
           setShowPDFViewer(true);
-        }
-
-        // Si estamos en contexto de múltiples, actualizar estado de la mutación
-        if (response.data.pdf_url) {
           await actualizarMutacionEnMultiples(token, response.data);
+          resetComplementacionForm();
+          setTipoMutacionSeleccionado(null);
+          setActiveTab('historial');
+          fetchHistorial();
+        } else {
+          toast.success(response.data.mensaje || 'Solicitud procesada exitosamente');
+          resetComplementacionForm();
+          setTipoMutacionSeleccionado(null);
+          setActiveTab('historial');
+          fetchHistorial();
         }
-        resetComplementacionForm();
-        setTipoMutacionSeleccionado(null);
-        setActiveTab('historial');
-        fetchHistorial();
       } else {
         toast.error(response.data.mensaje || 'Error al procesar la solicitud');
       }
@@ -11454,6 +11605,150 @@ export default function MutacionesResoluciones() {
       </Dialog>
 
       {/* Modal de visualización de PDF */}
+      {/* ===== MODAL DE PREVISUALIZACIÓN PDF BORRADOR ===== */}
+      <Dialog open={showBorradorPreview} onOpenChange={(open) => { if (!open) { setShowBorradorPreview(false); setBorradorPdfBase64(''); } }}>
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Previsualización de Resolución - {borradorTipo}
+            </DialogTitle>
+            <DialogDescription>
+              Revise el borrador del PDF. Puede editar campos clave y regenerar antes de confirmar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+            {/* Panel izquierdo: Campos editables */}
+            <div className="w-[380px] flex-shrink-0 overflow-y-auto border rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-sm flex items-center gap-1"><Edit className="w-4 h-4" /> Editar datos</h3>
+
+              <div>
+                <Label className="text-xs font-medium">Texto considerando</Label>
+                <Textarea
+                  rows={3}
+                  className="mt-1 text-xs"
+                  onChange={(e) => updateBorradorField('texto_considerando', e.target.value)}
+                  placeholder="Texto personalizado para considerandos..."
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium">Calidad del solicitante</Label>
+                <Select defaultValue="propietario" onValueChange={(v) => updateBorradorField('calidad_solicitante', v)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="propietario">Propietario</SelectItem>
+                    <SelectItem value="apoderado">Apoderado</SelectItem>
+                    <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                    <SelectItem value="poseedor">Poseedor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {['M3', 'M4', 'M6', 'RECTIFICACION_AREA', 'COMPLEMENTACION'].includes(borradorTipo) && (
+                <div>
+                  <Label className="text-xs font-medium">Avalúo nuevo</Label>
+                  <Input
+                    type="number"
+                    className="mt-1"
+                    onChange={(e) => updateBorradorField('avaluo_nuevo', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              )}
+
+              {['M6', 'RECTIFICACION_AREA', 'COMPLEMENTACION'].includes(borradorTipo) && (
+                <>
+                  <div>
+                    <Label className="text-xs font-medium">Área terreno nueva (m²)</Label>
+                    <Input type="number" className="mt-1" onChange={(e) => updateBorradorField('area_terreno_nueva', parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Área construida nueva (m²)</Label>
+                    <Input type="number" className="mt-1" onChange={(e) => updateBorradorField('area_construida_nueva', parseFloat(e.target.value) || 0)} />
+                  </div>
+                </>
+              )}
+
+              {['M3', 'COMPLEMENTACION'].includes(borradorTipo) && (
+                <div>
+                  <Label className="text-xs font-medium">Destino económico nuevo</Label>
+                  <Select onValueChange={(v) => updateBorradorField('destino_nuevo', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                    <SelectContent>
+                      {DESTINOS_ECONOMICOS_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {['M4', 'M5'].includes(borradorTipo) && (
+                <div>
+                  <Label className="text-xs font-medium">Motivo de la solicitud</Label>
+                  <Textarea rows={2} className="mt-1 text-xs" onChange={(e) => updateBorradorField('motivo_solicitud', e.target.value)} />
+                </div>
+              )}
+
+              {borradorTipo === 'M4' && (
+                <div>
+                  <Label className="text-xs font-medium">Decisión</Label>
+                  <Select defaultValue="aceptar" onValueChange={(v) => updateBorradorField('decision', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="aceptar">Aceptar</SelectItem>
+                      <SelectItem value="rechazar">Rechazar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleBorradorPreview(borradorSolicitudId, borradorTipo)}
+                disabled={generandoBorrador}
+              >
+                {generandoBorrador ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Regenerar borrador
+              </Button>
+            </div>
+
+            {/* Panel derecho: Visor PDF */}
+            <div className="flex-1 border rounded-lg overflow-hidden bg-gray-100 min-h-0">
+              {borradorPdfBase64 ? (
+                <iframe
+                  title="Preview PDF"
+                  src={`data:application/pdf;base64,${borradorPdfBase64}`}
+                  className="w-full h-full"
+                  style={{ minHeight: '500px' }}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" /> Generando borrador...
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => { setShowBorradorPreview(false); setBorradorPdfBase64(''); }}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={handleConfirmarAprobacionBorrador}
+              disabled={aprobandoBorrador}
+            >
+              {aprobandoBorrador ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Confirmar y Generar Resolución
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PDFViewerModal
         isOpen={showPDFViewer}
         onClose={() => setShowPDFViewer(false)}

@@ -188,7 +188,7 @@ def generar_qr_verificacion(codigo_verificacion: str, base_url: str = None) -> I
     return ImageReader(qr_buffer)
 
 
-def generate_m6_resolution_pdf(data: dict) -> bytes:
+def generate_m6_resolution_pdf(data: dict, es_borrador: bool = False) -> bytes:
     """
     Genera PDF de resolución de Rectificación de Área con el mismo estilo visual
     que las demás mutaciones (M1-M5).
@@ -314,15 +314,27 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
     y_position = PAGE_HEIGHT - MARGIN_TOP
     current_page = 1
     
+    def draw_borrador_watermark():
+        """Dibuja marca de agua BORRADOR en diagonal rojo semitransparente"""
+        if es_borrador:
+            c.saveState()
+            c.setFillColor(colors.HexColor('#FF0000'))
+            c.setFillAlpha(0.15)
+            c.setFont('Helvetica-Bold', 80)
+            c.translate(PAGE_WIDTH / 2, PAGE_HEIGHT / 2)
+            c.rotate(45)
+            c.drawCentredString(0, 0, "BORRADOR")
+            c.restoreState()
+
     def draw_header():
         """Dibuja el encabezado institucional - IDÉNTICO a M5"""
         nonlocal y_position
         if encabezado_img:
             header_height = 2.5 * cm
-            c.drawImage(encabezado_img, 0, PAGE_HEIGHT - header_height, 
-                       width=PAGE_WIDTH, height=header_height, 
+            c.drawImage(encabezado_img, 0, PAGE_HEIGHT - header_height,
+                       width=PAGE_WIDTH, height=header_height,
                        preserveAspectRatio=False, mask='auto')
-        
+
         # Marca de agua - IDÉNTICO a M5
         if logo_watermark:
             c.saveState()
@@ -335,7 +347,8 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
                        width=watermark_width, height=watermark_height,
                        preserveAspectRatio=True, mask='auto')
             c.restoreState()
-        
+
+        draw_borrador_watermark()
         return PAGE_HEIGHT - 3*cm
     
     def draw_footer():

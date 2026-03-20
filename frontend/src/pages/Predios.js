@@ -4403,7 +4403,7 @@ export default function Predios() {
                     <option value="Mutación Tercera">Mutación Tercera - Modificación de construcción o destino</option>
                     <option value="Mutación Cuarta">Mutación Cuarta - Auto estimación del avalúo catastral</option>
                     <option value="Mutación Quinta">Mutación Quinta - Inscripción o eliminación de predio</option>
-                    <option value="Mutación Sexta">Mutación Sexta - Rectificación de área</option>
+                    <option value="Rectificación de Área">Rectificación de Área</option>
                     <option value="Complementación">Complementación de información catastral</option>
                   </select>
                 </div>

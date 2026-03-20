@@ -138,7 +138,8 @@ def generate_resolucion_m3_pdf(
     imagen_pie_b64: str = None,
     imagen_firma_b64: str = None,
     codigo_verificacion: str = None,
-    verificacion_base_url: str = None
+    verificacion_base_url: str = None,
+    es_borrador: bool = False,
 ) -> bytes:
     """
     Genera el PDF de la resolución M3 (Cambio de destino / Incorporación de construcción)
@@ -244,10 +245,23 @@ def generate_resolucion_m3_pdf(
                        preserveAspectRatio=True, mask='auto')
             c.restoreState()
     
+    def draw_borrador_watermark():
+        """Dibuja marca de agua BORRADOR en diagonal rojo semitransparente"""
+        if es_borrador:
+            c.saveState()
+            c.setFillColor(colors.HexColor('#FF0000'))
+            c.setFillAlpha(0.15)
+            c.setFont('Helvetica-Bold', 80)
+            c.translate(PAGE_WIDTH / 2, PAGE_HEIGHT / 2)
+            c.rotate(45)
+            c.drawCentredString(0, 0, "BORRADOR")
+            c.restoreState()
+
     def draw_header():
         """Dibuja el encabezado institucional IDÉNTICO al M2"""
         nonlocal y_position
         draw_watermark()
+        draw_borrador_watermark()
         
         if encabezado_img:
             encabezado_width = CONTENT_WIDTH + 1 * cm

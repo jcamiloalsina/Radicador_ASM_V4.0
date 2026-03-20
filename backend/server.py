@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Form, Query, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Form, Query, BackgroundTasks, WebSocket, WebSocketDisconnect, Request, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -611,12 +611,15 @@ class SolicitudMutacionCreate(BaseModel):
     documentos_soporte: Optional[str] = None
     # Campo universal para texto personalizado de considerandos
     texto_considerando: Optional[str] = None  # Texto personalizado para la sección "CONSIDERANDO" de la resolución
+    # Flag para omitir auto-aprobación (usado en previsualización)
+    skip_auto_approve: Optional[bool] = False
 
 class SolicitudMutacionAccion(BaseModel):
     """Modelo para acciones sobre una solicitud de mutación"""
     accion: str  # asignar_apoyo, enviar_aprobacion, aprobar, devolver, rechazar, finalizar_cartografia
     observaciones: Optional[str] = None
     gestor_apoyo_id: Optional[str] = None
+    datos_editados: Optional[dict] = None  # Datos editados en previsualización antes de aprobar
 
 
 class RadicadoMultipleCreate(BaseModel):
@@ -31951,7 +31954,7 @@ async def crear_solicitud_mutacion(
         puede_aprobar_directo = (
             current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
             Permission.APPROVE_CHANGES in current_user.get('permissions', [])
-        ) and not data.gestor_apoyo_id
+        ) and not data.gestor_apoyo_id and not data.skip_auto_approve
         
         # Generar radicado usando el consecutivo global RASMGC (mismo que peticiones)
         radicado = data.radicado
@@ -32345,6 +32348,265 @@ async def actualizar_solicitud_mutacion(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+@api_router.post("/solicitudes-mutacion/{solicitud_id}/preview")
+async def preview_solicitud_mutacion(
+    solicitud_id: str,
+    data: dict = Body(default={}),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera un PDF borrador de la solicitud de mutación SIN consumir número de resolución,
+    SIN aplicar cambios al predio, SIN guardar en BD, SIN enviar correo.
+    Opcionalmente recibe datos_editados para mezclar con los datos existentes.
+    Retorna el PDF como base64.
+    """
+    try:
+        puede_aprobar = (
+            current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+            Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+        )
+        if not puede_aprobar:
+            raise HTTPException(status_code=403, detail="No tiene permisos para previsualizar")
+
+        solicitud = await db.solicitudes_mutacion.find_one({"id": solicitud_id})
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+
+        datos_editados = data.get("datos_editados", {}) or {}
+
+        # Mezclar datos editados en la solicitud (copia temporal, NO se guarda)
+        solicitud_preview = {**solicitud}
+        for key, value in datos_editados.items():
+            if value is not None:
+                solicitud_preview[key] = value
+
+        tipo_mutacion = solicitud_preview.get('tipo', 'M1')
+        municipio = solicitud_preview.get('municipio', '')
+        radicado = solicitud_preview.get('radicado', '')
+
+        # Número provisional (NO consume consecutivo)
+        import time
+        numero_borrador = f"BORRADOR-{tipo_mutacion}-{int(time.time())}"
+        fecha_borrador = datetime.now(COLOMBIA_TZ).strftime("%d/%m/%Y")
+
+        # Obtener nombre del municipio
+        municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
+
+        pdf_bytes = None
+
+        if tipo_mutacion == "M2":
+            from resolucion_m2_pdf_generator import generate_resolucion_m2_pdf
+            solicitante = solicitud_preview.get('solicitante') or {"nombre": "No especificado", "documento": ""}
+            pdf_bytes = generate_resolucion_m2_pdf(
+                numero_resolucion=numero_borrador,
+                fecha_resolucion=fecha_borrador,
+                municipio=municipio_nombre,
+                subtipo=solicitud_preview.get('subtipo', 'desengloble'),
+                radicado=radicado,
+                solicitante=solicitante,
+                predios_cancelados=solicitud_preview.get('predios_cancelados', []),
+                predios_inscritos=solicitud_preview.get('predios_inscritos', []),
+                elaboro=solicitud_preview.get('creado_por_nombre', ''),
+                aprobo=current_user.get('full_name', ''),
+                texto_considerando=solicitud_preview.get('texto_considerando'),
+                calidad_solicitante=solicitud_preview.get('calidad_solicitante', 'propietario'),
+                es_borrador=True
+            )
+
+        elif tipo_mutacion == "M3":
+            from resolucion_m3_pdf_generator import generate_resolucion_m3_pdf
+            predio_id = solicitud_preview.get('predio_id', '')
+            predio = await db.predios.find_one({"id": predio_id}, {"_id": 0}) if predio_id else {}
+            predio = predio or {}
+            fechas_inscripcion = solicitud_preview.get('fechas_inscripcion') or [
+                {"año": datetime.now().year, "avaluo": solicitud_preview.get('avaluo_nuevo', 0), "avaluo_source": "actual"}
+            ]
+            pdf_data = {
+                "numero_resolucion": numero_borrador,
+                "fecha_resolucion": fecha_borrador,
+                "municipio": municipio_nombre,
+                "subtipo": solicitud_preview.get('subtipo', 'cambio_destino'),
+                "radicado": radicado,
+                "predio": predio,
+                "destino_anterior": solicitud_preview.get('destino_anterior') or predio.get('destino_economico', 'R'),
+                "destino_nuevo": solicitud_preview.get('destino_nuevo'),
+                "construcciones_nuevas": solicitud_preview.get('construcciones_nuevas', []),
+                "avaluo_anterior": solicitud_preview.get('avaluo_anterior', 0),
+                "avaluo_nuevo": solicitud_preview.get('avaluo_nuevo', 0),
+                "fechas_inscripcion": fechas_inscripcion,
+                "solicitante": solicitud_preview.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+                "calidad_solicitante": solicitud_preview.get('calidad_solicitante', 'propietario'),
+                "elaborado_por": solicitud_preview.get('creado_por_nombre', ''),
+                "revisado_por": current_user.get('full_name', ''),
+                "texto_considerando": solicitud_preview.get('texto_considerando'),
+            }
+            pdf_bytes = generate_resolucion_m3_pdf(pdf_data, es_borrador=True)
+
+        elif tipo_mutacion == "M4":
+            from resolucion_m4_pdf_generator import generate_resolucion_m4_pdf
+            predio_id = solicitud_preview.get('predio_id', '')
+            predio = await db.predios.find_one({"id": predio_id}, {"_id": 0}) if predio_id else {}
+            predio = predio or {}
+            pdf_data = {
+                "numero_resolucion": numero_borrador,
+                "fecha_resolucion": fecha_borrador,
+                "municipio": municipio_nombre,
+                "subtipo": solicitud_preview.get('subtipo', 'revision_avaluo'),
+                "decision": solicitud_preview.get('decision', 'aceptar'),
+                "radicado": radicado,
+                "predio": predio,
+                "solicitante": solicitud_preview.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+                "calidad_solicitante": solicitud_preview.get('calidad_solicitante', 'propietario'),
+                "avaluo_anterior": solicitud_preview.get('avaluo_anterior') or predio.get('avaluo', 0),
+                "avaluo_nuevo": solicitud_preview.get('avaluo_nuevo', 0),
+                "motivo_solicitud": solicitud_preview.get('motivo_solicitud', ''),
+                "valor_autoestimado": solicitud_preview.get('valor_autoestimado') or solicitud_preview.get('avaluo_nuevo', 0),
+                "perito_avaluador": solicitud_preview.get('perito_avaluador', ''),
+                "elaborado_por": solicitud_preview.get('creado_por_nombre', ''),
+                "revisado_por": current_user.get('full_name', ''),
+                "texto_considerando": solicitud_preview.get('texto_considerando'),
+            }
+            pdf_bytes = generate_resolucion_m4_pdf(pdf_data, es_borrador=True)
+
+        elif tipo_mutacion == "M5":
+            from resolucion_m5_pdf_generator import generar_resolucion_m5_pdf
+            predio_m5 = solicitud_preview.get('predio_m5', {})
+            pdf_data = {
+                "subtipo": solicitud_preview.get('subtipo', 'cancelacion'),
+                "numero_resolucion": numero_borrador,
+                "fecha_resolucion": fecha_borrador,
+                "municipio": municipio_nombre,
+                "radicado": radicado,
+                "solicitante": solicitud_preview.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+                "calidad_solicitante": solicitud_preview.get('calidad_solicitante', 'propietario'),
+                "motivo_solicitud": solicitud_preview.get('motivo_solicitud', ''),
+                "predio_m5": predio_m5,
+                "es_doble_inscripcion": solicitud_preview.get('es_doble_inscripcion', False),
+                "codigo_predio_duplicado": solicitud_preview.get('codigo_predio_duplicado', ''),
+                "elaborado_por": solicitud_preview.get('creado_por_nombre', ''),
+                "revisado_por": current_user.get('full_name', ''),
+                "texto_considerando": solicitud_preview.get('texto_considerando'),
+            }
+            pdf_bytes = generar_resolucion_m5_pdf(pdf_data, es_borrador=True)
+
+        elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
+            from resolucion_m6_pdf_generator import generate_m6_resolution_pdf
+            predio_data = solicitud_preview.get('predio_rectificacion', {})
+            predio_id = solicitud_preview.get('predio_id') or predio_data.get('id')
+            predio_db = None
+            if predio_id:
+                predio_db = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+            pdf_data = {
+                "numero_resolucion": numero_borrador,
+                "fecha_resolucion": fecha_borrador,
+                "municipio": municipio_nombre,
+                "radicado": radicado,
+                "predio": predio_db or predio_data,
+                "solicitante": solicitud_preview.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+                "calidad_solicitante": solicitud_preview.get('calidad_solicitante', 'propietario'),
+                "area_terreno_anterior": solicitud_preview.get('area_terreno_anterior', 0),
+                "area_terreno_nueva": solicitud_preview.get('area_terreno_nueva', 0),
+                "area_construida_anterior": solicitud_preview.get('area_construida_anterior', 0),
+                "area_construida_nueva": solicitud_preview.get('area_construida_nueva', 0),
+                "avaluo_anterior": solicitud_preview.get('avaluo_anterior', 0),
+                "avaluo_nuevo": solicitud_preview.get('avaluo_nuevo', 0),
+                "elaborado_por": solicitud_preview.get('creado_por_nombre', ''),
+                "revisado_por": current_user.get('full_name', ''),
+                "texto_considerando": solicitud_preview.get('texto_considerando'),
+            }
+            pdf_bytes = generate_m6_resolution_pdf(pdf_data, es_borrador=True)
+
+        elif tipo_mutacion == "COMPLEMENTACION":
+            from resolucion_complementacion_pdf_generator import generar_resolucion_complementacion_pdf
+            predio_data = solicitud_preview.get('predio', {})
+            predio_id = predio_data.get('id')
+            predio_db = None
+            if predio_id:
+                predio_db = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+            predio_final = predio_db or predio_data
+            pdf_data = {
+                "numero_resolucion": numero_borrador,
+                "fecha_resolucion": fecha_borrador,
+                "municipio": municipio_nombre,
+                "radicado": radicado,
+                "predio": predio_final,
+                "solicitante": solicitud_preview.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+                "calidad_solicitante": solicitud_preview.get('calidad_solicitante', 'propietario'),
+                "area_terreno_anterior": solicitud_preview.get('area_terreno_anterior', 0),
+                "area_terreno_nueva": solicitud_preview.get('area_terreno_nueva', 0),
+                "area_construida_anterior": solicitud_preview.get('area_construida_anterior', 0),
+                "area_construida_nueva": solicitud_preview.get('area_construida_nueva', 0),
+                "avaluo_anterior": solicitud_preview.get('avaluo_anterior', 0),
+                "avaluo_nuevo": solicitud_preview.get('avaluo_nuevo', 0),
+                "destino_anterior": solicitud_preview.get('destino_anterior', ''),
+                "destino_nuevo": solicitud_preview.get('destino_nuevo', ''),
+                "direccion_anterior": solicitud_preview.get('direccion_anterior', ''),
+                "direccion_nueva": solicitud_preview.get('direccion_nueva', ''),
+                "matricula_anterior": solicitud_preview.get('matricula_anterior', ''),
+                "matricula_nueva": solicitud_preview.get('matricula_nueva', ''),
+                "propietarios_nuevos": solicitud_preview.get('propietarios_nuevos', []),
+                "elaborado_por": solicitud_preview.get('creado_por_nombre', ''),
+                "revisado_por": current_user.get('full_name', ''),
+                "texto_considerando": solicitud_preview.get('texto_considerando'),
+            }
+            pdf_bytes = generar_resolucion_complementacion_pdf(pdf_data, es_borrador=True)
+
+        else:
+            # M1 - generar preview con generador M1
+            from resolucion_pdf_generator import generate_resolucion_pdf
+            predio_id = solicitud_preview.get('predio_id', '')
+            predio = await db.predios.find_one({"id": predio_id}, {"_id": 0}) if predio_id else {}
+            predio = predio or {}
+            r1 = predio.get('r1_registros', [{}])
+            r1_data = r1[0] if r1 else {}
+            r2 = predio.get('r2_registros', [{}])
+            r2_data = r2[0] if r2 else {}
+            pdf_bytes = generate_resolucion_pdf(
+                numero_resolucion=numero_borrador,
+                fecha_resolucion=fecha_borrador,
+                municipio=municipio_nombre,
+                tipo_tramite="MUTACIÓN PRIMERA",
+                radicado=radicado,
+                codigo_catastral_anterior=predio.get('codigo_predial_nacional', ''),
+                npn=predio.get('numero_predial_nuevo', predio.get('codigo_predial_nacional', '')),
+                matricula_inmobiliaria=r2_data.get('matricula_inmobiliaria', predio.get('matricula_inmobiliaria', '')),
+                direccion=r1_data.get('direccion', predio.get('direccion', '')),
+                avaluo=str(predio.get('avaluo', 0)),
+                vigencia_fiscal=str(datetime.now().year),
+                area_terreno=str(r1_data.get('area_terreno', predio.get('area_terreno', 0))),
+                area_construida=str(r1_data.get('area_construida', predio.get('area_construida', 0))),
+                destino_economico=r1_data.get('destino_economico', predio.get('destino_economico', 'A')),
+                propietarios_anteriores=solicitud_preview.get('propietarios_anteriores', []),
+                propietarios_nuevos=solicitud_preview.get('propietarios_nuevos', []),
+                elaboro=solicitud_preview.get('creado_por_nombre', ''),
+                aprobo=current_user.get('full_name', ''),
+                texto_considerando=solicitud_preview.get('texto_considerando'),
+                es_borrador=True
+            )
+
+        if not pdf_bytes:
+            raise HTTPException(status_code=500, detail="No se pudo generar el PDF borrador")
+
+        # Retornar como base64
+        import base64 as b64
+        pdf_base64 = b64.b64encode(pdf_bytes).decode('utf-8')
+
+        return {
+            "success": True,
+            "pdf_base64": pdf_base64,
+            "numero_borrador": numero_borrador,
+            "tipo": tipo_mutacion
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generando preview: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generando previsualización: {str(e)}")
+
+
 @api_router.post("/solicitudes-mutacion/{solicitud_id}/accion")
 async def ejecutar_accion_solicitud(
     solicitud_id: str,
@@ -32521,13 +32783,21 @@ async def ejecutar_accion_solicitud(
                 "aprobado_por_nombre": current_user['full_name'],
                 "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat()
             }
-            
+
+            # Aplicar datos editados de la previsualización (si los hay)
+            if data.datos_editados:
+                datos_ed = data.datos_editados
+                for key, value in datos_ed.items():
+                    if value is not None:
+                        solicitud[key] = value
+                        update_data[key] = value  # Guardar también en BD
+
             # ========================================
             # GENERAR PDF Y APLICAR CAMBIOS SEGÚN TIPO
             # ========================================
             tipo_mutacion = solicitud.get('tipo', 'M1')
             pdf_result = None
-            
+
             try:
                 if tipo_mutacion == "M2":
                     # Generar resolución M2 (Desenglobe)

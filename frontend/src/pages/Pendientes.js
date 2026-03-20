@@ -118,6 +118,10 @@ export default function Pendientes() {
   const [observacionesMutacion, setObservacionesMutacion] = useState('');
   const [procesandoMutacion, setProcesandoMutacion] = useState(false);
   const [pdfViewerData, setPdfViewerData] = useState({ isOpen: false, url: '', title: '', fileName: '' });
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewPdfBase64, setPreviewPdfBase64] = useState('');
+  const [previewDatosEditados, setPreviewDatosEditados] = useState({});
+  const [generandoPreview, setGenerandoPreview] = useState(false);
 
   // Estados para solicitudes de mutación asignadas como gestor de apoyo
   const [misSolicitudesMutacion, setMisSolicitudesMutacion] = useState([]);
@@ -454,6 +458,89 @@ export default function Pendientes() {
     } finally {
       setProcesandoMutacion(false);
     }
+  };
+
+  // ===== PREVISUALIZACIÓN DE PDF BORRADOR =====
+  const handlePreviewMutacion = async (solicitudId, datosEditados = null) => {
+    setGenerandoPreview(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/preview`, {
+        datos_editados: datosEditados || previewDatosEditados
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.pdf_base64) {
+        setPreviewPdfBase64(response.data.pdf_base64);
+        setShowPreviewModal(true);
+        setShowMutacionModal(false);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al generar previsualización');
+    } finally {
+      setGenerandoPreview(false);
+    }
+  };
+
+  const handleConfirmarAprobacion = async () => {
+    setProcesandoMutacion(true);
+    try {
+      const token = localStorage.getItem('token');
+      const hasDatosEditados = Object.keys(previewDatosEditados).length > 0;
+      const response = await axios.post(`${API}/solicitudes-mutacion/${selectedMutacion?.id}/accion`, {
+        accion: 'aprobar',
+        observaciones: observacionesMutacion || null,
+        datos_editados: hasDatosEditados ? previewDatosEditados : null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      toast.success('Solicitud de mutación aprobada exitosamente');
+
+      if (response.data.pdf_url) {
+        const pdfFullUrl = `${BACKEND_URL}${response.data.pdf_url}`;
+        const numRes = response.data.numero_resolucion || 'Resolución';
+        setPdfViewerData({
+          isOpen: true,
+          url: pdfFullUrl,
+          title: `Resolución ${numRes}`,
+          fileName: `${numRes.replace(/\//g, '-')}.pdf`
+        });
+        toast.success(`Resolución ${numRes} generada exitosamente`);
+      } else if (response.data.error_pdf) {
+        toast.warning('La solicitud fue aprobada pero hubo un error al generar el PDF.');
+      }
+
+      setShowPreviewModal(false);
+      setPreviewPdfBase64('');
+      setPreviewDatosEditados({});
+      setSelectedMutacion(null);
+      setObservacionesMutacion('');
+      fetchMutacionesPendientes();
+      window.dispatchEvent(new Event('pendientesUpdated'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al aprobar');
+    } finally {
+      setProcesandoMutacion(false);
+    }
+  };
+
+  const updatePreviewField = (key, value) => {
+    setPreviewDatosEditados(prev => ({ ...prev, [key]: value }));
+  };
+
+  const getEditableFieldsForType = (tipo) => {
+    const fields = {
+      M1: ['solicitante', 'calidad_solicitante', 'propietarios_nuevos'],
+      M2: ['texto_considerando', 'solicitante', 'calidad_solicitante'],
+      M3: ['texto_considerando', 'solicitante', 'calidad_solicitante', 'avaluo_nuevo', 'destino_nuevo'],
+      M4: ['texto_considerando', 'solicitante', 'calidad_solicitante', 'avaluo_nuevo', 'motivo_solicitud', 'decision'],
+      M5: ['texto_considerando', 'solicitante', 'calidad_solicitante', 'motivo_solicitud'],
+      M6: ['texto_considerando', 'solicitante', 'calidad_solicitante', 'avaluo_nuevo', 'area_terreno_nueva', 'area_construida_nueva'],
+      RECTIFICACION_AREA: ['texto_considerando', 'solicitante', 'calidad_solicitante', 'avaluo_nuevo', 'area_terreno_nueva', 'area_construida_nueva'],
+      COMPLEMENTACION: ['texto_considerando', 'solicitante', 'calidad_solicitante', 'avaluo_nuevo', 'destino_nuevo', 'area_terreno_nueva', 'area_construida_nueva', 'matricula_nueva', 'direccion_nueva', 'propietarios_nuevos'],
+    };
+    return fields[tipo] || fields.M1;
   };
 
   // Cargar mis asignaciones de apoyo en modificaciones
@@ -1901,10 +1988,10 @@ export default function Pendientes() {
                             <Button
                               size="sm"
                               className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                              onClick={() => handleMutacionAccion(mutacion.id, 'aprobar')}
-                              disabled={procesandoMutacion}
+                              onClick={() => { setSelectedMutacion(mutacion); setPreviewDatosEditados({}); handlePreviewMutacion(mutacion.id, {}); }}
+                              disabled={generandoPreview || procesandoMutacion}
                             >
-                              <CheckCircle className="w-4 h-4 mr-1" />
+                              {generandoPreview ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
                               Aprobar
                             </Button>
                           )}
@@ -2800,12 +2887,12 @@ export default function Pendientes() {
             </Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'aprobar')}
-              disabled={procesandoMutacion || (selectedMutacion?.gestor_apoyo_id && !selectedMutacion?.gestor_apoyo_completado)}
+              onClick={() => { setPreviewDatosEditados({}); handlePreviewMutacion(selectedMutacion?.id, {}); }}
+              disabled={generandoPreview || procesandoMutacion || (selectedMutacion?.gestor_apoyo_id && !selectedMutacion?.gestor_apoyo_completado)}
               title={selectedMutacion?.gestor_apoyo_id && !selectedMutacion?.gestor_apoyo_completado ? 'El gestor de apoyo aún no ha completado la cartografía' : ''}
             >
-              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-              Aprobar
+              {generandoPreview ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+              Previsualizar y Aprobar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4006,6 +4093,243 @@ export default function Pendientes() {
         </DialogContent>
       </Dialog>
       {/* PDF Viewer Modal */}
+      {/* ===== MODAL DE PREVISUALIZACIÓN PDF BORRADOR ===== */}
+      <Dialog open={showPreviewModal} onOpenChange={(open) => { if (!open) { setShowPreviewModal(false); setPreviewPdfBase64(''); } }}>
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Previsualización de Resolución - {displayTipoMutacion(selectedMutacion?.tipo)} - {selectedMutacion?.radicado}
+            </DialogTitle>
+            <DialogDescription>
+              Revise el borrador del PDF. Puede editar campos clave y regenerar el borrador antes de confirmar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+            {/* Panel izquierdo: Campos editables */}
+            <div className="w-[380px] flex-shrink-0 overflow-y-auto border rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-sm flex items-center gap-1"><Edit className="w-4 h-4" /> Editar datos</h3>
+
+              {/* Solicitante */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('solicitante') && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Nombre solicitante</Label>
+                  <Input
+                    size="sm"
+                    defaultValue={selectedMutacion?.solicitante?.nombre || ''}
+                    onChange={(e) => updatePreviewField('solicitante', { ...(previewDatosEditados.solicitante || selectedMutacion?.solicitante || {}), nombre: e.target.value })}
+                  />
+                  <Label className="text-xs font-medium">Documento solicitante</Label>
+                  <Input
+                    size="sm"
+                    defaultValue={selectedMutacion?.solicitante?.documento || selectedMutacion?.solicitante?.numero_documento || ''}
+                    onChange={(e) => updatePreviewField('solicitante', { ...(previewDatosEditados.solicitante || selectedMutacion?.solicitante || {}), documento: e.target.value, numero_documento: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* Calidad solicitante */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('calidad_solicitante') && (
+                <div>
+                  <Label className="text-xs font-medium">Calidad del solicitante</Label>
+                  <Select defaultValue={selectedMutacion?.calidad_solicitante || 'propietario'} onValueChange={(v) => updatePreviewField('calidad_solicitante', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="propietario">Propietario</SelectItem>
+                      <SelectItem value="apoderado">Apoderado</SelectItem>
+                      <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                      <SelectItem value="poseedor">Poseedor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Texto considerando */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('texto_considerando') && (
+                <div>
+                  <Label className="text-xs font-medium">Texto considerando</Label>
+                  <Textarea
+                    rows={3}
+                    className="mt-1 text-xs"
+                    defaultValue={selectedMutacion?.texto_considerando || ''}
+                    onChange={(e) => updatePreviewField('texto_considerando', e.target.value)}
+                    placeholder="Texto personalizado para considerandos..."
+                  />
+                </div>
+              )}
+
+              {/* Avalúo nuevo */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('avaluo_nuevo') && (
+                <div>
+                  <Label className="text-xs font-medium">Avalúo nuevo</Label>
+                  <Input
+                    type="number"
+                    className="mt-1"
+                    defaultValue={selectedMutacion?.avaluo_nuevo || ''}
+                    onChange={(e) => updatePreviewField('avaluo_nuevo', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              )}
+
+              {/* Destino nuevo */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('destino_nuevo') && (
+                <div>
+                  <Label className="text-xs font-medium">Destino económico nuevo</Label>
+                  <Select defaultValue={selectedMutacion?.destino_nuevo || ''} onValueChange={(v) => updatePreviewField('destino_nuevo', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DESTINOS_ECONOMICOS_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Área terreno nueva */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('area_terreno_nueva') && (
+                <div>
+                  <Label className="text-xs font-medium">Área terreno nueva (m²)</Label>
+                  <Input
+                    type="number"
+                    className="mt-1"
+                    defaultValue={selectedMutacion?.area_terreno_nueva || ''}
+                    onChange={(e) => updatePreviewField('area_terreno_nueva', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              )}
+
+              {/* Área construida nueva */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('area_construida_nueva') && (
+                <div>
+                  <Label className="text-xs font-medium">Área construida nueva (m²)</Label>
+                  <Input
+                    type="number"
+                    className="mt-1"
+                    defaultValue={selectedMutacion?.area_construida_nueva || ''}
+                    onChange={(e) => updatePreviewField('area_construida_nueva', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              )}
+
+              {/* Motivo solicitud */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('motivo_solicitud') && (
+                <div>
+                  <Label className="text-xs font-medium">Motivo de la solicitud</Label>
+                  <Textarea
+                    rows={2}
+                    className="mt-1 text-xs"
+                    defaultValue={selectedMutacion?.motivo_solicitud || ''}
+                    onChange={(e) => updatePreviewField('motivo_solicitud', e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Decisión M4 */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('decision') && (
+                <div>
+                  <Label className="text-xs font-medium">Decisión</Label>
+                  <Select defaultValue={selectedMutacion?.decision || 'aceptar'} onValueChange={(v) => updatePreviewField('decision', v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="aceptar">Aceptar</SelectItem>
+                      <SelectItem value="rechazar">Rechazar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Matrícula nueva */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('matricula_nueva') && (
+                <div>
+                  <Label className="text-xs font-medium">Matrícula nueva</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={selectedMutacion?.matricula_nueva || ''}
+                    onChange={(e) => updatePreviewField('matricula_nueva', e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Dirección nueva */}
+              {getEditableFieldsForType(selectedMutacion?.tipo).includes('direccion_nueva') && (
+                <div>
+                  <Label className="text-xs font-medium">Dirección nueva</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={selectedMutacion?.direccion_nueva || ''}
+                    onChange={(e) => updatePreviewField('direccion_nueva', e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Observaciones para la aprobación */}
+              <div className="pt-2 border-t">
+                <Label className="text-xs font-medium">Observaciones (opcional)</Label>
+                <Textarea
+                  rows={2}
+                  className="mt-1 text-xs"
+                  value={observacionesMutacion}
+                  onChange={(e) => setObservacionesMutacion(e.target.value)}
+                  placeholder="Observaciones al aprobar..."
+                />
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handlePreviewMutacion(selectedMutacion?.id)}
+                disabled={generandoPreview}
+              >
+                {generandoPreview ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Regenerar borrador
+              </Button>
+            </div>
+
+            {/* Panel derecho: Visor PDF */}
+            <div className="flex-1 border rounded-lg overflow-hidden bg-gray-100 min-h-0">
+              {previewPdfBase64 ? (
+                <iframe
+                  title="Preview PDF"
+                  src={`data:application/pdf;base64,${previewPdfBase64}`}
+                  className="w-full h-full"
+                  style={{ minHeight: '500px' }}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" /> Generando borrador...
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => { setShowPreviewModal(false); setPreviewPdfBase64(''); setShowMutacionModal(true); }}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver
+            </Button>
+            <Button
+              variant="outline"
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+              onClick={() => { setShowPreviewModal(false); setPreviewPdfBase64(''); handleMutacionAccion(selectedMutacion?.id, 'devolver'); }}
+              disabled={procesandoMutacion || !observacionesMutacion.trim()}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Devolver
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={handleConfirmarAprobacion}
+              disabled={procesandoMutacion}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Confirmar y Aprobar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PDFViewerModal
         isOpen={pdfViewerData.isOpen}
         onClose={() => setPdfViewerData({ isOpen: false, url: '', title: '', fileName: '' })}

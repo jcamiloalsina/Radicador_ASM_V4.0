@@ -138,6 +138,7 @@ def generate_resolucion_m2_pdf(
     aprobo: str = "",
     texto_considerando: str = None,  # Texto personalizado para considerandos
     calidad_solicitante: str = "propietario",
+    es_borrador: bool = False,
 ) -> bytes:
     """
     Genera un PDF de resolución M2 (Englobe/Desengloble)
@@ -232,11 +233,24 @@ def generate_resolucion_m2_pdf(
                        preserveAspectRatio=True, mask='auto')
             c.restoreState()
     
+    def draw_borrador_watermark():
+        """Dibuja marca de agua BORRADOR en diagonal rojo semitransparente"""
+        if es_borrador:
+            c.saveState()
+            c.setFillColor(colors.HexColor('#FF0000'))
+            c.setFillAlpha(0.15)
+            c.setFont('Helvetica-Bold', 80)
+            c.translate(PAGE_WIDTH / 2, PAGE_HEIGHT / 2)
+            c.rotate(45)
+            c.drawCentredString(0, 0, "BORRADOR")
+            c.restoreState()
+
     def draw_header():
         """Dibuja el encabezado institucional idéntico al M1"""
         nonlocal y_position
         # Marca de agua
         draw_watermark()
+        draw_borrador_watermark()
         
         if encabezado_img:
             encabezado_width = CONTENT_WIDTH + 1 * cm
