@@ -2988,7 +2988,47 @@ async def get_petition(petition_id: str, current_user: dict = Depends(get_curren
         petition['created_at'] = datetime.fromisoformat(petition['created_at'])
     if isinstance(petition['updated_at'], str):
         petition['updated_at'] = datetime.fromisoformat(petition['updated_at'])
-    
+
+    # Refrescar datos de predios relacionados con info vigente de la BD
+    if petition.get('predios_relacionados') or petition.get('predio_relacionado'):
+        predios_ref = petition.get('predios_relacionados', [])
+        if not predios_ref and petition.get('predio_relacionado'):
+            predios_ref = [petition['predio_relacionado']]
+
+        predios_actualizados = []
+        for pr in predios_ref:
+            predio_fresco = None
+            cod = pr.get('codigo_predial', '').strip() if pr.get('codigo_predial') else ''
+            pid = pr.get('predio_id', '')
+
+            if cod:
+                cursor = db.predios.find({"codigo_predial_nacional": cod, "deleted": {"$ne": True}}, {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio_fresco = p
+            if not predio_fresco and pid:
+                cursor = db.predios.find({"id": pid, "deleted": {"$ne": True}}, {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio_fresco = p
+
+            if predio_fresco:
+                matricula_r2 = None
+                r2_regs = predio_fresco.get("r2_registros", [])
+                if r2_regs:
+                    matricula_r2 = r2_regs[0].get("matricula_inmobiliaria")
+                predios_actualizados.append({
+                    "predio_id": predio_fresco.get("id"),
+                    "codigo_predial": predio_fresco.get("codigo_predial_nacional"),
+                    "matricula": matricula_r2 or pr.get("matricula"),
+                    "direccion": predio_fresco.get("direccion"),
+                    "municipio": predio_fresco.get("municipio")
+                })
+            else:
+                predios_actualizados.append(pr)
+
+        if predios_actualizados:
+            petition['predios_relacionados'] = predios_actualizados
+            petition['predio_relacionado'] = predios_actualizados[0]
+
     return petition
 
 @api_router.post("/petitions/{petition_id}/upload")
