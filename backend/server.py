@@ -32239,7 +32239,7 @@ async def listar_pendientes_aprobacion(
     
     try:
         solicitudes = await db.solicitudes_mutacion.find(
-            {"estado": MutacionEstado.PENDIENTE_APROBACION},
+            {"estado": {"$in": [MutacionEstado.PENDIENTE_APROBACION, MutacionEstado.PENDIENTE_CARTOGRAFIA]}},
             {"_id": 0}
         ).sort("fecha_creacion", -1).to_list(500)
 
@@ -32630,11 +32630,21 @@ async def ejecutar_accion_solicitud(
             notificaciones.append({
                 "usuario_id": solicitud['creado_por_id'],
                 "titulo": f"❌ Solicitud {solicitud['tipo']} rechazada",
-                "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido rechazada. Motivo: {data.observaciones or 'Sin motivo especificado'}",
+                "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido rechazada por {current_user['full_name']}. Motivo: {data.observaciones or 'Sin motivo especificado'}",
                 "tipo": "error",
                 "enlace": "/dashboard/mutaciones"
             })
-        
+
+            # Notificar al gestor de apoyo si estaba asignado
+            if solicitud.get('gestor_apoyo_id') and solicitud['gestor_apoyo_id'] != solicitud['creado_por_id']:
+                notificaciones.append({
+                    "usuario_id": solicitud['gestor_apoyo_id'],
+                    "titulo": f"❌ Solicitud {solicitud['tipo']} rechazada",
+                    "mensaje": f"La solicitud {solicitud['radicado']} que tenías asignada fue rechazada por {current_user['full_name']}.",
+                    "tipo": "warning",
+                    "enlace": "/dashboard/pendientes"
+                })
+
         else:
             raise HTTPException(status_code=400, detail=f"Acción no válida: {accion}")
         

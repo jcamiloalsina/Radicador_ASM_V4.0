@@ -123,6 +123,7 @@ export default function Pendientes() {
   const [misSolicitudesMutacion, setMisSolicitudesMutacion] = useState([]);
   const [loadingSolicitudesMutacion, setLoadingSolicitudesMutacion] = useState(false);
   const [selectedSolicitudMutacion, setSelectedSolicitudMutacion] = useState(null);
+  const [showDetalleMutacionModal, setShowDetalleMutacionModal] = useState(false);
   const [showFinalizarCartografiaModal, setShowFinalizarCartografiaModal] = useState(false);
   const [observacionesCartografia, setObservacionesCartografia] = useState('');
   const [procesandoCartografia, setProcesandoCartografia] = useState(false);
@@ -1588,7 +1589,10 @@ export default function Pendientes() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setSelectedSolicitudMutacion(solicitud)}
+                                  onClick={() => {
+                                    setSelectedSolicitudMutacion(solicitud);
+                                    setShowDetalleMutacionModal(true);
+                                  }}
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
                                   Ver Detalle
@@ -1798,6 +1802,11 @@ export default function Pendientes() {
                                   {mutacion.subtipo}
                                 </Badge>
                               )}
+                              {mutacion.estado === 'pendiente_cartografia' && (
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                                  En cartografía{mutacion.gestor_apoyo_nombre ? `: ${mutacion.gestor_apoyo_nombre}` : ''}
+                                </Badge>
+                              )}
                               {mutacion.radicado && (
                                 <Badge className="bg-slate-100 text-slate-700">
                                   {mutacion.radicado}
@@ -1877,15 +1886,28 @@ export default function Pendientes() {
                           >
                             <XCircle className="w-4 h-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                            onClick={() => handleMutacionAccion(mutacion.id, 'aprobar')}
-                            disabled={procesandoMutacion}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Aprobar
-                          </Button>
+                          {mutacion.estado === 'pendiente_cartografia' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                              onClick={() => handleMutacionAccion(mutacion.id, 'rechazar')}
+                              disabled={procesandoMutacion}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Devolver
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => handleMutacionAccion(mutacion.id, 'aprobar')}
+                              disabled={procesandoMutacion}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Aprobar
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -3794,6 +3816,101 @@ export default function Pendientes() {
               ) : (
                 <><Trash2 className="w-4 h-4 mr-2" /> Eliminar Solicitud</>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para Ver Detalle de Solicitud de Mutación */}
+      <Dialog open={showDetalleMutacionModal} onOpenChange={setShowDetalleMutacionModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalle de Solicitud de Mutación</DialogTitle>
+          </DialogHeader>
+          {selectedSolicitudMutacion && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500">Tipo</p>
+                  <p className="font-medium">{selectedSolicitudMutacion.tipo} - {selectedSolicitudMutacion.subtipo === 'englobe' ? 'Englobe' : selectedSolicitudMutacion.subtipo === 'desengloble' ? 'Desenglobe' : selectedSolicitudMutacion.subtipo || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500">Estado</p>
+                  <p className="font-medium capitalize">{(selectedSolicitudMutacion.estado || '').replace(/_/g, ' ')}</p>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500">Municipio</p>
+                  <p className="font-medium">{selectedSolicitudMutacion.municipio_nombre || selectedSolicitudMutacion.municipio}</p>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500">Radicado</p>
+                  <p className="font-medium">{selectedSolicitudMutacion.radicado || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500">Solicitado por</p>
+                  <p className="font-medium">{selectedSolicitudMutacion.creado_por_nombre || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500">Fecha</p>
+                  <p className="font-medium">{selectedSolicitudMutacion.fecha_creacion ? new Date(selectedSolicitudMutacion.fecha_creacion).toLocaleString('es-CO') : 'N/A'}</p>
+                </div>
+              </div>
+
+              {selectedSolicitudMutacion.solicitante && (
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-xs text-blue-600 font-medium mb-1">Solicitante</p>
+                  <p className="text-sm">{selectedSolicitudMutacion.solicitante.nombre || 'N/A'}</p>
+                  <p className="text-xs text-slate-500">{selectedSolicitudMutacion.solicitante.tipo_documento || 'CC'}: {selectedSolicitudMutacion.solicitante.documento || 'N/A'}</p>
+                </div>
+              )}
+
+              {selectedSolicitudMutacion.predios_cancelados?.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-red-700 mb-2">Predios a Cancelar ({selectedSolicitudMutacion.predios_cancelados.length})</p>
+                  <div className="space-y-2">
+                    {selectedSolicitudMutacion.predios_cancelados.map((p, i) => (
+                      <div key={i} className="bg-red-50 p-2 rounded border border-red-200 text-sm">
+                        <p className="font-mono text-xs">{p.codigo_predial || p.npn}</p>
+                        <p>{p.direccion || 'Sin dirección'}</p>
+                        <p className="text-xs text-slate-500">
+                          {p.propietarios?.[0]?.nombre_propietario || 'Sin propietario'} |
+                          Área: {p.area_terreno || 0} m² | Avalúo: ${(p.avaluo || 0).toLocaleString('es-CO')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedSolicitudMutacion.predios_inscritos?.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-emerald-700 mb-2">Predios a Inscribir ({selectedSolicitudMutacion.predios_inscritos.length})</p>
+                  <div className="space-y-2">
+                    {selectedSolicitudMutacion.predios_inscritos.map((p, i) => (
+                      <div key={i} className="bg-emerald-50 p-2 rounded border border-emerald-200 text-sm">
+                        <p className="font-mono text-xs">{p.codigo_predial || p.npn || 'Pendiente'}</p>
+                        <p>{p.direccion || 'Sin dirección'}</p>
+                        <p className="text-xs text-slate-500">
+                          {p.propietarios?.[0]?.nombre_propietario || p.propietarios?.[0]?.nombre || 'Sin propietario'} |
+                          Área: {p.area_terreno || 0} m²
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedSolicitudMutacion.observaciones && (
+                <div className="bg-amber-50 p-3 rounded-lg">
+                  <p className="text-xs text-amber-600 font-medium mb-1">Observaciones</p>
+                  <p className="text-sm">{selectedSolicitudMutacion.observaciones}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowDetalleMutacionModal(false); setSelectedSolicitudMutacion(null); }}>
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>

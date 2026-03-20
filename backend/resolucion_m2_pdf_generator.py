@@ -681,8 +681,8 @@ def generate_resolucion_m2_pdf(
             c.setFillColor(NEGRO)
             c.setFont(font_bold, 7)
             
-            col_widths_vig = [CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.25]
-            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "DECRETO", "FUENTE"]
+            col_widths_vig = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.35]
+            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "DECRETO"]
             x = MARGIN_LEFT
             for i, header in enumerate(headers_vig):
                 c.drawCentredString(x + col_widths_vig[i]/2, y_position - 9, header)
@@ -695,21 +695,12 @@ def generate_resolucion_m2_pdf(
             for fecha in fechas_inscripcion:
                 año = str(fecha.get("año", ""))
                 avaluo_fecha = fecha.get("avaluo", 0)
-                fuente = fecha.get("avaluo_source", "manual")
-                
                 # Formatear avalúo
                 try:
                     avaluo_fmt = f"${float(avaluo_fecha):,.0f}".replace(",", ".")
                 except:
                     avaluo_fmt = str(avaluo_fecha)
-                
-                # Traducir fuente
-                fuente_texto = {
-                    "manual": "Ingreso manual",
-                    "sistema": "Sistema catastral",
-                    "actual": "Vigencia actual"
-                }.get(fuente, fuente)
-                
+
                 decreto = str(fecha.get("decreto", ""))
 
                 x = MARGIN_LEFT
@@ -723,10 +714,6 @@ def generate_resolucion_m2_pdf(
 
                 c.rect(x, y_position - 12, col_widths_vig[2], 12, fill=0, stroke=1)
                 c.drawCentredString(x + col_widths_vig[2]/2, y_position - 9, decreto)
-                x += col_widths_vig[2]
-
-                c.rect(x, y_position - 12, col_widths_vig[3], 12, fill=0, stroke=1)
-                c.drawCentredString(x + col_widths_vig[3]/2, y_position - 9, fuente_texto[:25])
                 y_position -= 12
             
             y_position -= 3  # Espacio adicional después de las vigencias
