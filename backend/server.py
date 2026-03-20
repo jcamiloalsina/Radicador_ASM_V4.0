@@ -2654,18 +2654,21 @@ async def create_petition(
         for predio_item in lista_predios:
             cod_predial = predio_item.get("codigo_predial", "").strip()
             mat_inmob = predio_item.get("matricula_inmobiliaria", "").strip()
-            
+
             predio = None
+            proj = {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
             if cod_predial:
-                predio = await db.predios.find_one(
-                    {"codigo_predial_nacional": cod_predial}, 
-                    {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
-                )
+                cursor = db.predios.find(
+                    {"codigo_predial_nacional": cod_predial, "deleted": {"$ne": True}}, proj
+                ).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio = p
             elif mat_inmob:
-                predio = await db.predios.find_one(
-                    {"r2_registros.matricula_inmobiliaria": mat_inmob}, 
-                    {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
-                )
+                cursor = db.predios.find(
+                    {"r2_registros.matricula_inmobiliaria": mat_inmob, "deleted": {"$ne": True}}, proj
+                ).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio = p
             
             if predio:
                 matricula_r2 = None
@@ -2695,17 +2698,20 @@ async def create_petition(
     predio_relacionado = None
     if not lista_predios and (codigo_predial or matricula_inmobiliaria):
         predio = None
+        proj = {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
         if codigo_predial:
-            predio = await db.predios.find_one(
-                {"codigo_predial_nacional": codigo_predial.strip()}, 
-                {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
-            )
+            cursor = db.predios.find(
+                {"codigo_predial_nacional": codigo_predial.strip(), "deleted": {"$ne": True}}, proj
+            ).sort("vigencia", -1).limit(1)
+            async for p in cursor:
+                predio = p
         elif matricula_inmobiliaria:
             matricula_limpia = matricula_inmobiliaria.strip()
-            predio = await db.predios.find_one(
-                {"r2_registros.matricula_inmobiliaria": matricula_limpia}, 
-                {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
-            )
+            cursor = db.predios.find(
+                {"r2_registros.matricula_inmobiliaria": matricula_limpia, "deleted": {"$ne": True}}, proj
+            ).sort("vigencia", -1).limit(1)
+            async for p in cursor:
+                predio = p
         
         if predio:
             matricula_r2 = None
@@ -11749,26 +11755,39 @@ async def generar_certificado_desde_peticion(
     if not predios_relacionados:
         raise HTTPException(status_code=404, detail="No se encontraron predios asociados a esta petición.")
 
-    # Helper para buscar un predio en la BD
+    # Helper para buscar un predio en la BD (vigencia más reciente primero)
     async def buscar_predio_en_bd(predio_ref):
-        """Busca un predio por código predial, predio_id o matrícula"""
+        """Busca un predio por código predial, predio_id o matrícula, priorizando vigencia más reciente"""
         predio = None
         cod = predio_ref.get('codigo_predial', '').strip() if predio_ref.get('codigo_predial') else ''
         pid = predio_ref.get('predio_id', '')
         mat = predio_ref.get('matricula', '').strip() if predio_ref.get('matricula') else ''
 
         if cod:
-            predio = await db.predios.find_one({"codigo_predial_nacional": cod, "deleted": {"$ne": True}}, {"_id": 0})
+            # Buscar por vigencia más reciente
+            cursor = db.predios.find({"codigo_predial_nacional": cod, "deleted": {"$ne": True}}, {"_id": 0}).sort("vigencia", -1).limit(1)
+            async for p in cursor:
+                predio = p
             if not predio:
-                predio = await db.predios.find_one({"codigo_predial_nacional": cod}, {"_id": 0})
+                cursor = db.predios.find({"codigo_predial_nacional": cod}, {"_id": 0}).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio = p
         if not predio and pid:
-            predio = await db.predios.find_one({"id": pid, "deleted": {"$ne": True}}, {"_id": 0})
+            cursor = db.predios.find({"id": pid, "deleted": {"$ne": True}}, {"_id": 0}).sort("vigencia", -1).limit(1)
+            async for p in cursor:
+                predio = p
             if not predio:
-                predio = await db.predios.find_one({"id": pid}, {"_id": 0})
+                cursor = db.predios.find({"id": pid}, {"_id": 0}).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio = p
         if not predio and mat:
-            predio = await db.predios.find_one({"r2_registros.matricula_inmobiliaria": mat, "deleted": {"$ne": True}}, {"_id": 0})
+            cursor = db.predios.find({"r2_registros.matricula_inmobiliaria": mat, "deleted": {"$ne": True}}, {"_id": 0}).sort("vigencia", -1).limit(1)
+            async for p in cursor:
+                predio = p
             if not predio:
-                predio = await db.predios.find_one({"r2_registros.matricula_inmobiliaria": mat}, {"_id": 0})
+                cursor = db.predios.find({"r2_registros.matricula_inmobiliaria": mat}, {"_id": 0}).sort("vigencia", -1).limit(1)
+                async for p in cursor:
+                    predio = p
         return predio
 
     # Firmante siempre es Dalgie Esperanza Torrado Rizo
@@ -11869,8 +11888,8 @@ async def generar_certificado_desde_peticion(
         "certificado_generado": True,
         "certificado_codigo": codigos_verificacion[0] if len(codigos_verificacion) == 1 else ", ".join(codigos_verificacion),
         "certificado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-        "certificado_archivo": str(pdfs_generados[0][0]) if len(pdfs_generados) == 1 else ", ".join(str(p[0]) for p in pdfs_generados),
-        "predio_relacionado": predios_info[0] if len(predios_info) == 1 else predios_info[0],
+        "certificado_archivo": str(pdfs_generados[0][0]) if len(pdfs_generados) == 1 else json.dumps([str(p[0]) for p in pdfs_generados]),
+        "predio_relacionado": predios_info[0] if predios_info else None,
         "predios_relacionados": predios_info,
         "certificados_count": len(pdfs_generados),
         "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
@@ -12055,132 +12074,158 @@ async def regenerar_certificado_desde_peticion(
             detail="Esta petición no tiene un certificado generado previamente. Use el endpoint normal de generación."
         )
     
-    # Buscar el predio relacionado
-    predio = None
-    predio_relacionado = petition.get('predio_relacionado')
-    
-    if predio_relacionado and predio_relacionado.get('predio_id'):
-        predio = await db.predios.find_one({"id": predio_relacionado['predio_id']}, {"_id": 0})
-    
-    # Si no hay predio relacionado, buscar por código o matrícula guardada
-    if not predio:
-        codigo_buscado = petition.get('codigo_predial_buscado')
-        matricula_buscada = petition.get('matricula_buscada')
-        
-        if codigo_buscado:
-            predio = await db.predios.find_one({"codigo_predial_nacional": codigo_buscado}, {"_id": 0})
-        elif matricula_buscada:
-            predio = await db.predios.find_one(
-                {"r2_registros.matricula_inmobiliaria": matricula_buscada}, 
-                {"_id": 0}
-            )
-    
-    if not predio:
-        raise HTTPException(
-            status_code=404, 
-            detail="No se encontró el predio asociado a esta petición."
-        )
-    
-    # Verificar que el predio tenga información de propietarios
-    propietarios = predio.get('propietarios', [])
-    if not propietarios or len(propietarios) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Certificado no disponible. El predio no tiene información de propietarios (R1/R2) registrada."
-        )
-    
-    # Marcar el certificado anterior como inactivo
+    # Helper para buscar predio por vigencia más reciente
+    async def buscar_predio_vigente(query):
+        predio = None
+        cursor = db.predios.find({**query, "deleted": {"$ne": True}}, {"_id": 0}).sort("vigencia", -1).limit(1)
+        async for p in cursor:
+            predio = p
+        return predio
+
+    # Construir lista de predios a regenerar
+    predios_relacionados = petition.get('predios_relacionados', [])
+    if not predios_relacionados:
+        predio_relacionado = petition.get('predio_relacionado')
+        if predio_relacionado:
+            predios_relacionados = [predio_relacionado]
+        else:
+            codigo_buscado = petition.get('codigo_predial_buscado')
+            matricula_buscada = petition.get('matricula_buscada')
+            if codigo_buscado:
+                predios_relacionados = [{"codigo_predial": codigo_buscado}]
+            elif matricula_buscada:
+                predios_relacionados = [{"matricula": matricula_buscada}]
+
+    if not predios_relacionados:
+        raise HTTPException(status_code=404, detail="No se encontraron predios asociados a esta petición.")
+
+    # Marcar certificados anteriores como inactivos
     codigo_anterior = petition.get('certificado_codigo')
     if codigo_anterior:
-        await db.certificados_verificables.update_one(
-            {"codigo_verificacion": codigo_anterior},
-            {"$set": {
-                "estado": "reemplazado",
-                "reemplazado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-                "reemplazado_por": current_user['id']
-            }}
-        )
-    
-    # Generar NUEVO código de verificación
-    codigo_verificacion = generar_codigo_verificacion()
-    
-    # Registrar el nuevo certificado en la base de datos
-    propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios]
-    
-    # Obtener área terreno y avalúo del predio
-    area_terreno = predio.get('area_terreno', 0)
-    avaluo = predio.get('avaluo', 0)
-    
-    # Formatear área para mostrar
-    if area_terreno and area_terreno >= 10000:
-        ha = int(area_terreno // 10000)
-        m2_restantes = int(area_terreno % 10000)
-        area_str = f"{ha} ha {m2_restantes} m²"
-    elif area_terreno:
-        area_str = f"{int(area_terreno)} m²"
-    else:
-        area_str = "N/A"
-    
-    # Formatear avalúo
-    avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
-    
-    certificado_record = {
-        "id": str(uuid.uuid4()),
-        "codigo_verificacion": codigo_verificacion,
-        "predio_id": predio.get('id'),
-        "codigo_predial": predio.get('codigo_predial_nacional'),
-        "municipio": predio.get('municipio'),
-        "direccion": predio.get('direccion'),
-        "propietarios": propietarios_nombres,
-        "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
-        "generado_por": current_user['id'],
-        "generado_por_nombre": current_user['full_name'],
-        "estado": "activo",
-        "hash_documento": "",
-        # Datos adicionales para verificación
-        "area_terreno": area_str,
-        "avaluo_catastral": avaluo_str,
-        "petition_id": petition_id,
-        "radicado": petition.get('radicado'),
-        "generado_desde_peticion": True,
-        "es_regeneracion": True,
-        "certificado_anterior": codigo_anterior,
-        "numero_regeneracion": petition.get('regeneraciones_count', 0) + 1
-    }
-    
-    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(COLOMBIA_TZ).isoformat()}")
-    certificado_record["hash_documento"] = hash_doc
-    
-    await db.certificados_verificables.insert_one(certificado_record)
-    
+        # Puede ser un string con múltiples códigos separados por coma
+        for cod_ant in codigo_anterior.split(", "):
+            await db.certificados_verificables.update_one(
+                {"codigo_verificacion": cod_ant.strip()},
+                {"$set": {
+                    "estado": "reemplazado",
+                    "reemplazado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
+                    "reemplazado_por": current_user['id']
+                }}
+            )
+
     # Firmante
     firmante = {
         "full_name": "DALGIE ESPERANZA TORRADO RIZO",
         "cargo": "Subdirectora Financiera y Administrativa"
     }
-    
     proyectado_por = current_user['full_name']
-    
-    # Generar PDF con el mismo radicado de la petición original
-    pdf_bytes = generate_certificado_catastral(
-        predio, 
-        firmante, 
-        proyectado_por, 
-        codigo_verificacion,
-        radicado=petition.get('radicado')
-    )
-    
-    # Guardar PDF
-    cert_filename = f"certificado_{petition_id}_{codigo_verificacion}.pdf"
-    cert_path = UPLOAD_DIR / cert_filename
-    with open(cert_path, 'wb') as f:
-        f.write(pdf_bytes)
-    
-    # Actualizar la petición con el nuevo certificado
+
+    pdfs_generados = []
+    codigos_verificacion = []
+    predios_info = []
+    errores = []
+
+    for idx, predio_ref in enumerate(predios_relacionados):
+        # Buscar predio fresco por vigencia más reciente
+        predio = None
+        cod = predio_ref.get('codigo_predial', '').strip() if predio_ref.get('codigo_predial') else ''
+        pid = predio_ref.get('predio_id', '')
+        mat = predio_ref.get('matricula', '').strip() if predio_ref.get('matricula') else ''
+
+        if cod:
+            predio = await buscar_predio_vigente({"codigo_predial_nacional": cod})
+        if not predio and pid:
+            predio = await buscar_predio_vigente({"id": pid})
+        if not predio and mat:
+            predio = await buscar_predio_vigente({"r2_registros.matricula_inmobiliaria": mat})
+
+        if not predio:
+            errores.append(f"Predio {cod or mat or idx+1}: no encontrado")
+            continue
+
+        propietarios = predio.get('propietarios', [])
+        if not propietarios:
+            errores.append(f"Predio {predio.get('codigo_predial_nacional')}: sin propietarios")
+            continue
+
+        codigo_verificacion = generar_codigo_verificacion()
+        codigos_verificacion.append(codigo_verificacion)
+
+        propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios]
+        area_terreno = predio.get('area_terreno', 0)
+        avaluo = predio.get('avaluo', 0)
+
+        if area_terreno and area_terreno >= 10000:
+            area_str = f"{int(area_terreno // 10000)} ha {int(area_terreno % 10000)} m²"
+        elif area_terreno:
+            area_str = f"{int(area_terreno)} m²"
+        else:
+            area_str = "N/A"
+        avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
+
+        certificado_record = {
+            "id": str(uuid.uuid4()),
+            "codigo_verificacion": codigo_verificacion,
+            "predio_id": predio.get('id'),
+            "codigo_predial": predio.get('codigo_predial_nacional'),
+            "municipio": predio.get('municipio'),
+            "direccion": predio.get('direccion'),
+            "propietarios": propietarios_nombres,
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "generado_por": current_user['id'],
+            "generado_por_nombre": current_user['full_name'],
+            "estado": "activo",
+            "hash_documento": generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(COLOMBIA_TZ).isoformat()}"),
+            "area_terreno": area_str,
+            "avaluo_catastral": avaluo_str,
+            "petition_id": petition_id,
+            "radicado": petition.get('radicado'),
+            "generado_desde_peticion": True,
+            "es_regeneracion": True,
+            "certificado_anterior": codigo_anterior,
+            "numero_regeneracion": petition.get('regeneraciones_count', 0) + 1
+        }
+        await db.certificados_verificables.insert_one(certificado_record)
+
+        pdf_bytes = generate_certificado_catastral(
+            predio, firmante, proyectado_por, codigo_verificacion,
+            radicado=petition.get('radicado')
+        )
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        cert_filename = f"certificado_{petition_id}_{codigo_verificacion}_{timestamp}.pdf"
+        cert_path = UPLOAD_DIR / cert_filename
+        with open(cert_path, 'wb') as f:
+            f.write(pdf_bytes)
+
+        matricula_r2 = None
+        r2_registros = predio.get("r2_registros", [])
+        if r2_registros:
+            matricula_r2 = r2_registros[0].get("matricula_inmobiliaria")
+
+        predios_info.append({
+            "predio_id": predio.get("id"),
+            "codigo_predial": predio.get("codigo_predial_nacional"),
+            "matricula": matricula_r2,
+            "direccion": predio.get("direccion"),
+            "municipio": predio.get("municipio")
+        })
+        pdfs_generados.append((cert_path, cert_filename, predio, codigo_verificacion))
+
+    if not pdfs_generados:
+        detail = "No se pudo regenerar ningún certificado."
+        if errores:
+            detail += " Errores: " + "; ".join(errores)
+        raise HTTPException(status_code=404, detail=detail)
+
+    # Actualizar la petición con los nuevos certificados
     update_data = {
-        "certificado_codigo": codigo_verificacion,
+        "certificado_codigo": codigos_verificacion[0] if len(codigos_verificacion) == 1 else ", ".join(codigos_verificacion),
         "certificado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-        "certificado_archivo": str(cert_path),
+        "certificado_archivo": str(pdfs_generados[0][0]) if len(pdfs_generados) == 1 else json.dumps([str(p[0]) for p in pdfs_generados]),
+        "predios_relacionados": predios_info,
+        "predio_relacionado": predios_info[0] if predios_info else None,
+        "certificados_count": len(pdfs_generados),
         "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
@@ -12210,52 +12255,66 @@ async def regenerar_certificado_desde_peticion(
             radicado_pet = petition.get('radicado', petition_id)
             correo_destino = petition.get('correo')
             nombre_peticionario = petition.get('nombre_completo', 'Estimado usuario')
-            codigo_predial = predio.get('codigo_predial_nacional', 'N/A')
-            
+            codigo_predial = pdfs_generados[0][2].get('codigo_predial_nacional', 'N/A')
+            primer_codigo_verif = codigos_verificacion[0]
+
             if correo_destino:
                 subject = f"Certificado Catastral Actualizado - {radicado_pet}"
-                
+
                 contenido_cert = f"""
                 <p>Estimado/a <strong>{nombre_peticionario}</strong>,</p>
-                <p>Se ha generado una versión actualizada de su certificado catastral.</p>
-                
+                <p>Se ha generado una versión actualizada de su(s) certificado(s) catastral(es).</p>
+
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #22c55e;">
                     <p style="margin: 5px 0;"><strong>Radicado:</strong> {radicado_pet}</p>
                     <p style="margin: 5px 0;"><strong>Código Predial:</strong> {codigo_predial}</p>
-                    <p style="margin: 5px 0;"><strong>Nuevo Código de Verificación:</strong> {codigo_verificacion}</p>
-                    <p style="margin: 5px 0;"><strong>Fecha de Regeneración:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                    <p style="margin: 5px 0;"><strong>Código de Verificación:</strong> {primer_codigo_verif}</p>
+                    <p style="margin: 5px 0;"><strong>Certificados generados:</strong> {len(pdfs_generados)}</p>
+                    <p style="margin: 5px 0;"><strong>Fecha:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
                 </div>
-                
-                <p><strong>📎 El certificado actualizado está adjunto a este correo.</strong></p>
-                
+
+                <p><strong>El certificado actualizado está adjunto a este correo.</strong></p>
+
                 <p style="color: #64748b; font-size: 13px; margin-top: 20px;">
                     Este certificado tiene vigencia de un (1) mes a partir de su fecha de emisión.
                 </p>
                 """
-                
+
                 html_body = get_email_template(
                     titulo="Certificado Catastral Actualizado",
                     contenido=contenido_cert,
                     radicado=radicado_pet,
                     tipo_notificacion="success"
                 )
-                
+
+                # Adjuntar el primer PDF (o ZIP si hay múltiples)
+                if len(pdfs_generados) == 1:
+                    attachment = str(pdfs_generados[0][0])
+                    att_name = f"Certificado_Catastral_{radicado_pet}.pdf"
+                else:
+                    import zipfile
+                    zip_email = UPLOAD_DIR / f"Certificados_{radicado_pet}_regen.zip"
+                    with zipfile.ZipFile(zip_email, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                        for cp, _, pi, _ in pdfs_generados:
+                            zipf.write(cp, f"Certificado_{radicado_pet}_{pi.get('codigo_predial_nacional','')}.pdf")
+                    attachment = str(zip_email)
+                    att_name = f"Certificados_{radicado_pet}.zip"
+
                 await send_email_with_attachment(
                     to_email=correo_destino,
                     subject=subject,
                     html_body=html_body,
-                    attachment_path=str(cert_path),
-                    attachment_name=f"Certificado_Catastral_{radicado_pet}.pdf"
+                    attachment_path=attachment,
+                    attachment_name=att_name
                 )
-                
-                # Agregar notificación de envío al historial
+
                 await db.petitions.update_one(
                     {"id": petition_id},
                     {"$push": {"historial": {
                         "accion": "Certificado regenerado enviado por correo",
                         "usuario": current_user['full_name'],
                         "usuario_rol": current_user['role'],
-                        "notas": f"Certificado actualizado enviado a {correo_destino}",
+                        "notas": f"{len(pdfs_generados)} certificado(s) actualizado(s) enviado(s) a {correo_destino}",
                         "fecha": datetime.now(COLOMBIA_TZ).isoformat()
                     }}}
                 )
@@ -12266,24 +12325,42 @@ async def regenerar_certificado_desde_peticion(
     await registrar_log_actividad(
         accion="regenerar_certificado",
         categoria="certificados",
-        descripcion=f"{current_user['full_name']} regeneró certificado para petición {petition.get('radicado', petition_id)}",
+        descripcion=f"{current_user['full_name']} regeneró {len(pdfs_generados)} certificado(s) para petición {petition.get('radicado', petition_id)}",
         usuario_id=current_user['id'],
         usuario_nombre=current_user['full_name'],
         usuario_rol=current_user['role'],
         municipio=petition.get('municipio', ''),
         detalles={
             "radicado": petition.get('radicado', ''),
-            "codigo": predio.get('codigo_predial_nacional', '')
+            "certificados": len(pdfs_generados),
+            "codigos": codigos_verificacion
         }
     )
 
-    # Nombre del archivo para descarga
-    filename = f"Certificado_Catastral_{petition.get('radicado', petition_id)}.pdf"
-    
+    radicado_file = petition.get('radicado', petition_id)
+
+    # Si es un solo certificado, retornar PDF directo
+    if len(pdfs_generados) == 1:
+        return FileResponse(
+            path=pdfs_generados[0][0],
+            filename=f"Certificado_Catastral_{radicado_file}.pdf",
+            media_type='application/pdf'
+        )
+
+    # Múltiples certificados: retornar ZIP
+    import zipfile
+    zip_filename = f"Certificados_{radicado_file}_regen_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
+    zip_path = UPLOAD_DIR / zip_filename
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for cert_path_item, _, predio_item, _ in pdfs_generados:
+            codigo_pred = predio_item.get('codigo_predial_nacional', '')
+            pdf_name = f"Certificado_{radicado_file}_{codigo_pred}.pdf"
+            zipf.write(cert_path_item, pdf_name)
+
     return FileResponse(
-        path=cert_path,
-        filename=filename,
-        media_type='application/pdf'
+        path=zip_path,
+        filename=zip_filename,
+        media_type='application/zip'
     )
 
 
@@ -12311,19 +12388,43 @@ async def descargar_certificado_peticion(
     # Verificar que el certificado existe
     if not petition.get('certificado_generado'):
         raise HTTPException(status_code=400, detail="El certificado aún no ha sido generado")
-    
+
     cert_path = petition.get('certificado_archivo')
-    if not cert_path or not os.path.exists(cert_path):
+    if not cert_path:
         raise HTTPException(status_code=404, detail="El archivo del certificado no se encuentra")
-    
+
     radicado = petition.get('radicado', petition_id)
-    filename = f"Certificado_Catastral_{radicado}.pdf"
-    
-    return FileResponse(
-        path=cert_path,
-        filename=filename,
-        media_type='application/pdf'
-    )
+
+    # Verificar si es múltiples archivos (JSON array)
+    rutas_multiples = None
+    if cert_path.startswith('['):
+        try:
+            rutas_multiples = json.loads(cert_path)
+        except json.JSONDecodeError:
+            pass
+
+    if rutas_multiples:
+        # Múltiples certificados: generar ZIP
+        rutas_validas = [r for r in rutas_multiples if os.path.exists(r)]
+        if not rutas_validas:
+            raise HTTPException(status_code=404, detail="Los archivos de certificados no se encuentran")
+        import zipfile
+        zip_filename = f"Certificados_{radicado}.zip"
+        zip_path = UPLOAD_DIR / zip_filename
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for idx, ruta in enumerate(rutas_validas):
+                nombre_pdf = os.path.basename(ruta)
+                zipf.write(ruta, nombre_pdf)
+        return FileResponse(path=zip_path, filename=zip_filename, media_type='application/zip')
+    else:
+        # Certificado único
+        if not os.path.exists(cert_path):
+            raise HTTPException(status_code=404, detail="El archivo del certificado no se encuentra")
+        return FileResponse(
+            path=cert_path,
+            filename=f"Certificado_Catastral_{radicado}.pdf",
+            media_type='application/pdf'
+        )
 
 
 # === MUTACIONES MÚLTIPLES POR PETICIÓN ===

@@ -1027,7 +1027,19 @@ export default function PetitionDetail() {
                     {/* Si el certificado ya fue generado, mostrar descarga */}
                     {petition.certificado_generado ? (
                       <div className="space-y-3">
-                        {petition.predio_relacionado && (
+                        {/* Mostrar TODOS los predios relacionados */}
+                        {petition.predios_relacionados && petition.predios_relacionados.length > 0 ? (
+                          <div className="space-y-2 border-b border-emerald-200 pb-3">
+                            {petition.predios_relacionados.map((pr, idx) => (
+                              <div key={idx} className="space-y-1 text-sm bg-emerald-50/50 rounded p-2">
+                                {petition.predios_relacionados.length > 1 && <p className="text-xs font-semibold text-emerald-700">Predio {idx + 1}</p>}
+                                <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{pr.codigo_predial || 'N/A'}</span></p>
+                                {pr.matricula && <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{pr.matricula}</span></p>}
+                                {pr.direccion && <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{pr.direccion}</span></p>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : petition.predio_relacionado && (
                           <div className="space-y-1 text-sm border-b border-emerald-200 pb-3">
                             <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
                             {petition.predio_relacionado.matricula && (
@@ -1055,10 +1067,12 @@ export default function PetitionDetail() {
                               });
                               if (!response.ok) throw new Error('Error al descargar');
                               const blob = await response.blob();
+                              const contentType = response.headers.get('content-type') || '';
+                              const isZip = contentType.includes('zip');
                               const url = window.URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url;
-                              a.download = `Certificado_${petition.radicado}.pdf`;
+                              a.download = isZip ? `Certificados_${petition.radicado}.zip` : `Certificado_${petition.radicado}.pdf`;
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);
@@ -1069,7 +1083,7 @@ export default function PetitionDetail() {
                           }}
                         >
                           <Download className="w-4 h-4 mr-2" />
-                          Descargar Certificado PDF
+                          {petition.certificados_count > 1 ? `Descargar ${petition.certificados_count} Certificados (ZIP)` : 'Descargar Certificado PDF'}
                         </Button>
                         
                         {/* Botón para regenerar certificado (actualizar con nueva fecha) */}
@@ -1136,15 +1150,17 @@ export default function PetitionDetail() {
                                         throw new Error(errorData.detail || 'Error al regenerar');
                                       }
                                       const blob = await response.blob();
+                                      const contentType = response.headers.get('content-type') || '';
+                                      const isZip = contentType.includes('zip');
                                       const url = window.URL.createObjectURL(blob);
                                       const a = document.createElement('a');
                                       a.href = url;
-                                      a.download = `Certificado_Actualizado_${petition.radicado}.pdf`;
+                                      a.download = isZip ? `Certificados_Actualizados_${petition.radicado}.zip` : `Certificado_Actualizado_${petition.radicado}.pdf`;
                                       document.body.appendChild(a);
                                       a.click();
                                       document.body.removeChild(a);
                                       window.URL.revokeObjectURL(url);
-                                      toast.success('Certificado regenerado exitosamente');
+                                      toast.success('Certificado(s) regenerado(s) exitosamente');
                                       // Recargar la petición para ver el nuevo código
                                       window.location.reload();
                                     } catch (error) {
@@ -1160,17 +1176,30 @@ export default function PetitionDetail() {
                           </Dialog>
                         )}
                       </div>
-                    ) : petition.predio_relacionado ? (
+                    ) : (petition.predios_relacionados?.length > 0 || petition.predio_relacionado) ? (
                       <div className="space-y-3">
-                        <div className="space-y-1 text-sm">
-                          <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
-                          {petition.predio_relacionado.matricula && (
-                            <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
-                          )}
-                          {petition.predio_relacionado.direccion && (
-                            <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
-                          )}
-                        </div>
+                        {petition.predios_relacionados && petition.predios_relacionados.length > 0 ? (
+                          <div className="space-y-2">
+                            {petition.predios_relacionados.map((pr, idx) => (
+                              <div key={idx} className="space-y-1 text-sm bg-slate-50 rounded p-2">
+                                {petition.predios_relacionados.length > 1 && <p className="text-xs font-semibold text-slate-600">Predio {idx + 1}</p>}
+                                <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{pr.codigo_predial || 'N/A'}</span></p>
+                                {pr.matricula && <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{pr.matricula}</span></p>}
+                                {pr.direccion && <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{pr.direccion}</span></p>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : petition.predio_relacionado && (
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
+                            {petition.predio_relacionado.matricula && (
+                              <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
+                            )}
+                            {petition.predio_relacionado.direccion && (
+                              <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
+                            )}
+                          </div>
+                        )}
                         {/* Solo mostrar botón de generar certificado para "Certificado catastral sencillo" */}
                         {['gestor', 'coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && 
                          petition.tipo_tramite?.toLowerCase().trim().replace(/\s+/g, ' ') === 'certificado catastral sencillo' && (
