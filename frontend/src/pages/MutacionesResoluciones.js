@@ -193,9 +193,10 @@ export default function MutacionesResoluciones() {
     tipo_englobe: '', // 'total' o 'absorcion'
     predio_matriz_id: null, // ID del predio que absorbe (solo para absorción)
     predio_resultante: null, // Datos del predio resultante (editable)
+    calidad_solicitante: 'propietario',
     texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
-  
+
   // Estado para búsqueda de predios
   const [searchPredio, setSearchPredio] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -238,6 +239,7 @@ export default function MutacionesResoluciones() {
     fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
     observaciones: '',
     solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+    calidad_solicitante: 'propietario',
     texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM3, setSearchPredioM3] = useState('');
@@ -260,6 +262,7 @@ export default function MutacionesResoluciones() {
     observaciones: '',
     perito_avaluador: '', // Nombre del perito avaluador (solo para autoestimación)
     solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+    calidad_solicitante: 'propietario',
     texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM4, setSearchPredioM4] = useState('');
@@ -278,6 +281,7 @@ export default function MutacionesResoluciones() {
     motivo_solicitud: '',
     es_doble_inscripcion: false,
     codigo_predio_duplicado: '',
+    calidad_solicitante: 'propietario',
     observaciones: '',
     texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
@@ -334,7 +338,9 @@ export default function MutacionesResoluciones() {
     area_construida_anterior: 0,
     area_construida_nueva: 0,
     avaluo_nuevo: 0,
+    destino_economico: '',
     motivo_solicitud: '',
+    calidad_solicitante: 'propietario',
     observaciones: '',
     texto_considerando: ''
   });
@@ -2616,6 +2622,7 @@ export default function MutacionesResoluciones() {
         municipio: m2Data.municipio,
         radicado: m2Data.radicado,
         solicitante: m2Data.solicitante,
+        calidad_solicitante: m2Data.calidad_solicitante,
         predios_cancelados: m2Data.predios_cancelados,
         predios_inscritos: m2Data.predios_inscritos,
         gestor_apoyo_id: gestorApoyoSeleccionado
@@ -2706,12 +2713,13 @@ export default function MutacionesResoluciones() {
         municipio: m2Data.municipio,
         radicado: m2Data.radicado,
         solicitante: m2Data.solicitante,
+        calidad_solicitante: m2Data.calidad_solicitante,
         predios_cancelados: m2Data.predios_cancelados,
         predios_inscritos: m2Data.predios_inscritos
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         // Enviar a aprobación
         await axios.post(`${API}/solicitudes-mutacion/${response.data.solicitud_id}/accion`, {
@@ -2837,6 +2845,7 @@ export default function MutacionesResoluciones() {
         municipio: m2Data.municipio,
         radicado: m2Data.radicado,
         solicitante: m2Data.solicitante,
+        calidad_solicitante: m2Data.calidad_solicitante,
         predios_cancelados: m2Data.predios_cancelados,
         predios_inscritos: prediosInscribirOrdenados,
         observaciones: m2Data.observaciones || '',
@@ -3086,6 +3095,7 @@ export default function MutacionesResoluciones() {
         fechas_inscripcion: m3Data.fechas_inscripcion || [],
         observaciones: m3Data.observaciones || '',
         solicitante: m3Data.solicitante || { nombre: '', documento: '' },
+        calidad_solicitante: m3Data.calidad_solicitante,
         texto_considerando: m3Data.texto_considerando || ''
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -3311,6 +3321,7 @@ export default function MutacionesResoluciones() {
         codigo_predial: m4Data.predio.codigo_predial_nacional || m4Data.predio.NPN || '',
         predio_direccion: m4Data.predio.direccion || '',
         solicitante: solicitanteFinal,
+        calidad_solicitante: m4Data.calidad_solicitante,
         avaluo_anterior: m4Data.avaluo_anterior,
         avaluo_nuevo: m4Data.avaluo_nuevo,
         valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
@@ -3488,6 +3499,7 @@ export default function MutacionesResoluciones() {
         municipio: m5Data.municipio,
         radicado: m5Data.radicado,
         solicitante: solicitante,
+        calidad_solicitante: m5Data.calidad_solicitante,
         motivo_solicitud: m5Data.motivo_solicitud || 'Solicitud de trámite catastral',
         vigencia_cancelacion: m5Data.subtipo === 'cancelacion' ? m5Data.vigencia : null,
         vigencia_inscripcion: m5Data.subtipo === 'inscripcion' ? m5Data.vigencia : null,
@@ -3699,7 +3711,8 @@ export default function MutacionesResoluciones() {
       area_terreno_nueva: areaTerrenoActual, // Iniciar con el mismo valor
       area_construida_anterior: areaConstruidaActual,
       area_construida_nueva: areaConstruidaActual, // Iniciar con el mismo valor
-      avaluo_nuevo: avaluoActual // Iniciar con el mismo valor
+      avaluo_nuevo: avaluoActual, // Iniciar con el mismo valor
+      destino_economico: r1.destino_economico || predio.destino_economico || 'A'
     }));
     setSearchPredioRectificacion('');
     setSearchResultsRectificacion([]);
@@ -3802,6 +3815,7 @@ export default function MutacionesResoluciones() {
         municipio: rectificacionData.municipio,
         radicado: rectificacionData.radicado,
         solicitante: solicitante,
+        calidad_solicitante: rectificacionData.calidad_solicitante,
         predio_id: rectificacionData.predio.id,
         predio_rectificacion: rectificacionData.predio,
         area_terreno_anterior: parseFloat(rectificacionData.area_terreno_anterior) || 0,
@@ -3810,6 +3824,7 @@ export default function MutacionesResoluciones() {
         area_construida_nueva: totales.areaConstruidaNueva,
         avaluo_anterior: rectificacionData.predio.avaluo || 0,
         avaluo_nuevo: parseFloat(rectificacionData.avaluo_nuevo) || rectificacionData.predio.avaluo || 0,
+        destino_economico: rectificacionData.destino_economico || rectificacionData.predio.destino_economico || 'A',
         motivo_solicitud: rectificacionData.motivo_solicitud || 'Rectificación de área catastral',
         observaciones: rectificacionData.observaciones,
         texto_considerando: rectificacionData.texto_considerando || '',
@@ -4515,6 +4530,23 @@ export default function MutacionesResoluciones() {
                     data-testid="m3-solicitante-documento"
                   />
                 </div>
+                <div>
+                  <Label className="text-xs">Calidad del Solicitante</Label>
+                  <Select
+                    value={m3Data.calidad_solicitante || 'propietario'}
+                    onValueChange={(v) => setM3Data(prev => ({ ...prev, calidad_solicitante: v }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="propietario">Propietario</SelectItem>
+                      <SelectItem value="apoderado">Apoderado</SelectItem>
+                      <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                      <SelectItem value="poseedor">Poseedor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -5111,6 +5143,23 @@ export default function MutacionesResoluciones() {
                     className="h-9"
                     data-testid="m4-solicitante-documento"
                   />
+                </div>
+                <div>
+                  <Label className="text-xs">Calidad del Solicitante</Label>
+                  <Select
+                    value={m4Data.calidad_solicitante || 'propietario'}
+                    onValueChange={(v) => setM4Data(prev => ({ ...prev, calidad_solicitante: v }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="propietario">Propietario</SelectItem>
+                      <SelectItem value="apoderado">Apoderado</SelectItem>
+                      <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                      <SelectItem value="poseedor">Poseedor</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -6159,6 +6208,25 @@ export default function MutacionesResoluciones() {
             />
           </div>
 
+          {/* Calidad del Solicitante M5 */}
+          <div className="mt-3">
+            <Label className="text-xs">Calidad del Solicitante</Label>
+            <Select
+              value={m5Data.calidad_solicitante || 'propietario'}
+              onValueChange={(v) => setM5Data(prev => ({ ...prev, calidad_solicitante: v }))}
+            >
+              <SelectTrigger className="h-9 w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="propietario">Propietario</SelectItem>
+                <SelectItem value="apoderado">Apoderado</SelectItem>
+                <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                <SelectItem value="poseedor">Poseedor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Campo de Considerando Personalizado M5 */}
           <Card className="border-purple-200 bg-purple-50/30 mt-4">
             <CardHeader className="py-3">
@@ -6362,9 +6430,21 @@ export default function MutacionesResoluciones() {
               <div className="col-span-2">
                 <p className="text-slate-500">Propietario</p>
                 <p className="font-medium">
-                  {rectificacionData.predio.propietarios?.[0]?.nombre_propietario || 
+                  {rectificacionData.predio.propietarios?.[0]?.nombre_propietario ||
                    rectificacionData.predio.nombre_propietario || 'Sin propietario'}
                 </p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-slate-500 mb-1">Destino Económico</p>
+                <select
+                  className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={rectificacionData.destino_economico}
+                  onChange={(e) => setRectificacionData(prev => ({ ...prev, destino_economico: e.target.value }))}
+                >
+                  {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </CardContent>
@@ -6617,6 +6697,25 @@ export default function MutacionesResoluciones() {
               rows={2}
               data-testid="rectificacion-observaciones"
             />
+          </div>
+
+          {/* Calidad del Solicitante Rectificación */}
+          <div className="mt-3">
+            <Label className="text-xs">Calidad del Solicitante</Label>
+            <Select
+              value={rectificacionData.calidad_solicitante || 'propietario'}
+              onValueChange={(v) => setRectificacionData(prev => ({ ...prev, calidad_solicitante: v }))}
+            >
+              <SelectTrigger className="h-9 w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="propietario">Propietario</SelectItem>
+                <SelectItem value="apoderado">Apoderado</SelectItem>
+                <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                <SelectItem value="poseedor">Poseedor</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Texto de Considerandos */}
@@ -7027,12 +7126,17 @@ export default function MutacionesResoluciones() {
                 </div>
                 <div>
                   <Label className="text-xs">Destino Económico</Label>
-                  <Input
+                  <select
+                    className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     value={complementacionData.destino_nuevo}
                     onChange={(e) => setComplementacionData(prev => ({ ...prev, destino_nuevo: e.target.value }))}
-                    placeholder="Ej: A (Agropecuario), H (Habitacional), C (Comercial)"
                     data-testid="complementacion-destino"
-                  />
+                  >
+                    <option value="">Sin cambio</option>
+                    {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                      <option key={d.value} value={d.value}>{d.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>
@@ -7724,6 +7828,23 @@ export default function MutacionesResoluciones() {
                   className="bg-white"
                 />
               </div>
+              <div>
+                <Label className="text-xs">Calidad del Solicitante</Label>
+                <Select
+                  value={m2Data.calidad_solicitante || 'propietario'}
+                  onValueChange={(v) => setM2Data(prev => ({ ...prev, calidad_solicitante: v }))}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="propietario">Propietario</SelectItem>
+                    <SelectItem value="apoderado">Apoderado</SelectItem>
+                    <SelectItem value="representante_legal">Representante Legal</SelectItem>
+                    <SelectItem value="poseedor">Poseedor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -8309,16 +8430,29 @@ export default function MutacionesResoluciones() {
 
                     {/* Formulario para editar datos ajustados */}
                     <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-medium text-slate-600">Dirección</label>
-                        <Input
-                          value={m2Data.predio_resultante?.direccion || ''}
-                          onChange={(e) => setM2Data(prev => ({
-                            ...prev,
-                            predio_resultante: { ...prev.predio_resultante, direccion: e.target.value }
-                          }))}
-                          placeholder="Dirección del predio resultante"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-slate-600">Dirección</label>
+                          <Input
+                            value={m2Data.predio_resultante?.direccion || ''}
+                            onChange={(e) => setM2Data(prev => ({
+                              ...prev,
+                              predio_resultante: { ...prev.predio_resultante, direccion: e.target.value }
+                            }))}
+                            placeholder="Dirección del predio resultante"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-slate-600">Matrícula Inmobiliaria</label>
+                          <Input
+                            value={m2Data.predio_resultante?.matricula_inmobiliaria || ''}
+                            onChange={(e) => setM2Data(prev => ({
+                              ...prev,
+                              predio_resultante: { ...prev.predio_resultante, matricula_inmobiliaria: e.target.value }
+                            }))}
+                            placeholder="Ej: 270-12345"
+                          />
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-3 gap-3">
@@ -8367,11 +8501,10 @@ export default function MutacionesResoluciones() {
                             predio_resultante: { ...prev.predio_resultante, destino_economico: e.target.value }
                           }))}
                         >
-                          <option value="R">R - Residencial</option>
-                          <option value="C">C - Comercial</option>
-                          <option value="I">I - Industrial</option>
-                          <option value="A">A - Agropecuario</option>
-                          <option value="L">L - Lote</option>
+                          <option value="">Seleccionar destino</option>
+                          {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                            <option key={d.value} value={d.value}>{d.label}</option>
+                          ))}
                         </select>
                       </div>
 
@@ -9730,7 +9863,8 @@ export default function MutacionesResoluciones() {
                         avaluo_anterior: m3Data.avaluo_anterior || m3Data.predio.avaluo || null,
                         avaluo_nuevo: m3Data.avaluo_nuevo, observaciones: m3Data.observaciones,
                         texto_considerando: m3Data.texto_considerando,
-                        fechas_inscripcion: m3Data.fechas_inscripcion || []
+                        fechas_inscripcion: m3Data.fechas_inscripcion || [],
+                        solicitante: m3Data.solicitante, calidad_solicitante: m3Data.calidad_solicitante
                       }, resetFormularioM3);
                     }}
                     disabled={enviandoSolicitud}
@@ -9839,7 +9973,8 @@ export default function MutacionesResoluciones() {
                         municipio: m4Data.municipio, radicado: m4Data.radicado, predio: m4Data.predio,
                         predio_id: m4Data.predio.id, avaluo_nuevo: m4Data.avaluo_nuevo,
                         observaciones: m4Data.observaciones, texto_considerando: m4Data.texto_considerando,
-                        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
+                        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
+                        solicitante: m4Data.solicitante, calidad_solicitante: m4Data.calidad_solicitante
                       }, resetFormularioM4);
                     }}
                     disabled={enviandoSolicitud}
@@ -9945,7 +10080,8 @@ export default function MutacionesResoluciones() {
                         motivo_solicitud: m5Data.motivo_solicitud, es_doble_inscripcion: m5Data.es_doble_inscripcion,
                         codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
                         observaciones: m5Data.observaciones, texto_considerando: m5Data.texto_considerando,
-                        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
+                        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
+                        calidad_solicitante: m5Data.calidad_solicitante
                       }, resetM5Form);
                     }}
                     disabled={enviandoSolicitud}
@@ -10064,7 +10200,8 @@ export default function MutacionesResoluciones() {
                           avaluo_nuevo: rectificacionData.avaluo_nuevo,
                           motivo_solicitud: rectificacionData.motivo_solicitud,
                           observaciones: rectificacionData.observaciones, texto_considerando: rectificacionData.texto_considerando,
-                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
+                          calidad_solicitante: rectificacionData.calidad_solicitante
                         }, resetRectificacionForm);
                       }}
                       disabled={enviandoSolicitud}
@@ -11743,7 +11880,10 @@ export default function MutacionesResoluciones() {
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                               mut.estado === 'APROBADA' || mut.estado === 'FINALIZADO' ? 'bg-green-500 text-white' :
+                              mut.estado === 'PENDIENTE_CARTOGRAFIA' ? 'bg-cyan-500 text-white' :
                               mut.estado === 'PENDIENTE' || mut.estado === 'PENDIENTE_APROBACION' ? 'bg-amber-500 text-white' :
+                              mut.estado === 'DEVUELTO' ? 'bg-orange-500 text-white' :
+                              mut.estado === 'RECHAZADO' ? 'bg-red-500 text-white' :
                               'bg-slate-300 text-slate-700'
                             }`}>
                               {index + 1}
@@ -11758,7 +11898,13 @@ export default function MutacionesResoluciones() {
                               <p className="text-xs text-slate-500">
                                 {(mut.estado === 'APROBADA' || mut.estado === 'FINALIZADO') && mut.resolucion_id
                                   ? `Resolución: ${mut.resolucion_id}`
-                                  : `Estado: ${mut.estado === 'PENDIENTE_APROBACION' ? 'Pendiente de Aprobación' : mut.estado}`
+                                  : `Estado: ${
+                                      mut.estado === 'PENDIENTE_APROBACION' ? 'Pendiente de Aprobación' :
+                                      mut.estado === 'PENDIENTE_CARTOGRAFIA' ? `En trabajo del gestor de apoyo${mut.gestor_apoyo_nombre ? ': ' + mut.gestor_apoyo_nombre : ''}` :
+                                      mut.estado === 'DEVUELTO' ? 'Devuelta para correcciones' :
+                                      mut.estado === 'RECHAZADO' ? 'Rechazada' :
+                                      mut.estado
+                                    }`
                                 }
                               </p>
                             </div>

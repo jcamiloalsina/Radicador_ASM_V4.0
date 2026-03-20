@@ -4802,20 +4802,25 @@ export default function VisorActualizacion() {
                 <div className="text-[10px] text-slate-500">predios</div>
               </div>
               
-              {/* GRAN TOTAL */}
+              {/* GRAN TOTAL + PORCENTAJE */}
               <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg p-3 shadow-sm border border-emerald-300">
                 <div className="flex items-center gap-2 mb-1">
                   <BarChart3 className="w-4 h-4 text-white" />
-                  <span className="text-xs font-medium text-white/90">GRAN TOTAL</span>
+                  <span className="text-xs font-medium text-white/90">AVANCE</span>
                 </div>
                 <div className="text-2xl font-bold text-white">
-                  {(estadisticasAvanzadas.aprobaciones?.predios_nuevos || 0) +
-                   (estadisticasAvanzadas.aprobaciones?.mejoras_nuevas || 0) +
-                   (estadisticasAvanzadas.aprobaciones?.visitas_firmadas || 0) +
-                   (estadisticasAvanzadas.aprobaciones?.cancelaciones || 0) +
-                   (estadisticasAvanzadas.aprobaciones?.cambios_predios || 0)}
+                  {estadisticasAvanzadas.avance?.porcentaje || 0}%
                 </div>
-                <div className="text-[10px] text-white/80">acciones completadas</div>
+                <div className="text-[10px] text-white/80">
+                  {estadisticasAvanzadas.avance?.procesados || 0} de {estadisticasAvanzadas.avance?.total || 0} predios
+                </div>
+                {/* Barra de progreso */}
+                <div className="mt-2 w-full bg-white/30 rounded-full h-2">
+                  <div
+                    className="bg-white rounded-full h-2 transition-all duration-500"
+                    style={{ width: `${Math.min(estadisticasAvanzadas.avance?.porcentaje || 0, 100)}%` }}
+                  />
+                </div>
               </div>
             </div>
           ) : (
@@ -4828,7 +4833,7 @@ export default function VisorActualizacion() {
           {estadisticasAvanzadas && (
             <div className="mt-3 pt-3 border-t border-emerald-200 flex flex-wrap gap-4 text-xs text-slate-600">
               <span className="flex items-center gap-1">
-                <span className="font-medium">Total aprobaciones:</span>
+                <span className="font-medium">Total procesados:</span>
                 <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
                   {estadisticasAvanzadas.aprobaciones?.total_aprobaciones || 0}
                 </span>
@@ -4837,6 +4842,12 @@ export default function VisorActualizacion() {
                 <span className="font-medium">Propuestas pendientes:</span>
                 <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
                   {estadisticasAvanzadas.propuestas_pendientes || 0}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">En subsanación:</span>
+                <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded font-bold">
+                  {estadisticasAvanzadas.propuestas_subsanacion || 0}
                 </span>
               </span>
               <span className="flex items-center gap-1">

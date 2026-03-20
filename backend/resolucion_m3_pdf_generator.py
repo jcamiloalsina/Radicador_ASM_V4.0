@@ -82,7 +82,7 @@ def get_m3_plantilla():
         ),
         "considerando_cambio_destino": (
             "Qué, el(la) ciudadano(a) {solicitante_nombre}, identificado(a) con la Cédula de Ciudadanía No. {solicitante_documento}, "
-            "en su condición de propietario(a) del predio identificado con código catastral (NPN) {codigo_predial}, "
+            "{calidad_solicitante} del predio identificado con código catastral (NPN) {codigo_predial}, "
             "ubicado en el municipio de {municipio}, solicitó el cambio de destino económico del predio.\n\n"
             "Que una vez realizada la inspección ocular en terreno y/o por métodos indirectos, declarativos y colaborativos, "
             "se encontraron modificaciones físicas y económicas que sugieren un cambio en el destino económico del predio, "
@@ -90,7 +90,7 @@ def get_m3_plantilla():
         ),
         "considerando_incorporacion": (
             "Qué, el(la) ciudadano(a) {solicitante_nombre}, identificado(a) con la Cédula de Ciudadanía No. {solicitante_documento}, "
-            "en su condición de propietario(a) del predio identificado con código catastral (NPN) {codigo_predial}, "
+            "{calidad_solicitante} del predio identificado con código catastral (NPN) {codigo_predial}, "
             "ubicado en el municipio de {municipio}, solicitó la incorporación de construcciones al registro catastral.\n\n"
             "Que una vez realizada la inspección ocular en terreno y/o por métodos indirectos, declarativos y colaborativos, "
             "se encontraron nuevas construcciones en el predio que no se encuentran registradas en la base catastral, "
@@ -219,6 +219,14 @@ def generate_resolucion_m3_pdf(
     # Datos del solicitante
     solicitante_nombre = solicitante.get("nombre", "NO ESPECIFICADO")
     solicitante_documento = solicitante.get("documento", "N/A")
+    calidad_solicitante = data.get('calidad_solicitante', 'propietario')
+    CALIDADES = {
+        'propietario': 'en su condición de propietario(a)',
+        'apoderado': 'en calidad de apoderado del propietario(a)',
+        'representante_legal': 'en calidad de representante legal del propietario(a)',
+        'poseedor': 'en su condición de poseedor(a)'
+    }
+    texto_calidad = CALIDADES.get(calidad_solicitante, CALIDADES['propietario'])
     codigo_predial = predio.get("codigo_predial_nacional", predio.get("numero_predio", ""))
     
     # Marca de agua - IDÉNTICA al M2
@@ -681,13 +689,17 @@ def generate_resolucion_m3_pdf(
             texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))
         except Exception:
             pass
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_considerando:
+            texto_considerando = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_considerando}"
     elif subtipo == "cambio_destino":
         texto_considerando = plantilla["considerando_cambio_destino"].format(
             solicitante_nombre=solicitante_nombre,
             solicitante_documento=solicitante_documento,
             codigo_predial=codigo_predial,
             municipio=municipio,
-            vigencia=datetime.now().year
+            vigencia=datetime.now().year,
+            calidad_solicitante=texto_calidad
         )
     else:
         texto_considerando = plantilla["considerando_incorporacion"].format(
@@ -695,7 +707,8 @@ def generate_resolucion_m3_pdf(
             solicitante_documento=solicitante_documento,
             codigo_predial=codigo_predial,
             municipio=municipio,
-            vigencia=datetime.now().year
+            vigencia=datetime.now().year,
+            calidad_solicitante=texto_calidad
         )
     
     if texto_considerando_personalizado:

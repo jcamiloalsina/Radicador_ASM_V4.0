@@ -85,7 +85,7 @@ def get_m4_plantilla_revision():
             "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita una revisión de avalúo catastral, para el código predial nacional {codigo_predial}, "
-            "lo anterior en su calidad de propietario del predio."
+            "lo anterior {calidad_solicitante}."
         ),
         "considerando_motivo": (
             "Qué, la solicitud se centra en: \"{motivo_solicitud}\" argumenta el peticionario."
@@ -110,11 +110,11 @@ def get_m4_plantilla_revision():
         "articulo_1_intro": "Ordenar la inscripción en el catastro del Municipio de {municipio}, los siguientes cambios:",
         "articulo_2_aceptar": (
             "Aceptar la solicitud de revisión de avalúo presentada por el señor {solicitante_nombre}, "
-            "propietario del predio CPN No. {codigo_predial}, y realizar las correcciones en las bases catastrales."
+            "{calidad_solicitante_corto} del predio CPN No. {codigo_predial}, y realizar las correcciones en las bases catastrales."
         ),
         "articulo_2_rechazar": (
             "Rechazar la solicitud de revisión de avalúo presentada por el señor {solicitante_nombre}, "
-            "propietario del predio CPN No. {codigo_predial}."
+            "{calidad_solicitante_corto} del predio CPN No. {codigo_predial}."
         ),
         "articulo_3": (
             "De conformidad con lo dispuesto en el artículo 4.8.2 de la resolución 1040 de 2023, el presente acto "
@@ -161,7 +161,7 @@ def get_m4_plantilla_autoestimacion():
         ),
         "considerando_solicitud": (
             "Qué, el señor {solicitante_nombre}, identificado con cédula de ciudadanía No. {solicitante_documento}, "
-            "actuando en nombre propio y como propietario del predio, identificado con cédula catastral No. {codigo_predial} "
+            "actuando {calidad_solicitante}, identificado con cédula catastral No. {codigo_predial} "
             "y folio de matrícula inmobiliaria No. {matricula_inmobiliaria}, radicado bajo el consecutivo {radicado} "
             "del Municipio de {municipio}. Presentó una solicitud de autoestimación del inmueble, por un valor de "
             "${valor_autoestimado}, de acuerdo a: La autoestimación presentada por el propietario."
@@ -312,7 +312,22 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     # Datos del solicitante
     solicitante_nombre = solicitante.get('nombre', '')
     solicitante_documento = solicitante.get('documento', '')
-    
+    calidad_solicitante = data.get('calidad_solicitante', 'propietario')
+    CALIDADES = {
+        'propietario': 'en su calidad de propietario del predio',
+        'apoderado': 'en calidad de apoderado del propietario del predio',
+        'representante_legal': 'en calidad de representante legal del propietario del predio',
+        'poseedor': 'en su calidad de poseedor del predio'
+    }
+    CALIDADES_CORTO = {
+        'propietario': 'propietario',
+        'apoderado': 'apoderado del propietario',
+        'representante_legal': 'representante legal del propietario',
+        'poseedor': 'poseedor'
+    }
+    texto_calidad = CALIDADES.get(calidad_solicitante, CALIDADES['propietario'])
+    texto_calidad_corto = CALIDADES_CORTO.get(calidad_solicitante, CALIDADES_CORTO['propietario'])
+
     # Datos de avalúo
     avaluo_anterior = data.get('avaluo_anterior', 0)
     avaluo_nuevo = data.get('avaluo_nuevo', 0)
@@ -495,9 +510,13 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             texto_considerando = texto_considerando.replace('(avaluo_nuevo)', formatear_moneda(avaluo_nuevo))
             texto_considerando = texto_considerando.replace('(matricula)', matricula)
             texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))
+            texto_considerando = texto_considerando.replace('(calidad_solicitante)', texto_calidad)
         except Exception:
             texto_considerando = texto_considerando_personalizado
-        
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_considerando:
+            texto_considerando = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_considerando}"
+
         # Respetar saltos de línea/párrafo tal como fueron escritos
         parrafos = texto_considerando.split('\n')
         for idx_p, parrafo in enumerate(parrafos):
@@ -516,7 +535,8 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
                 solicitante_nombre=solicitante_nombre,
                 solicitante_documento=solicitante_documento,
                 radicado=radicado,
-                codigo_predial=codigo_predial
+                codigo_predial=codigo_predial,
+                calidad_solicitante=texto_calidad
             )
         else:
             texto_solicitud = plantilla['considerando_solicitud'].format(
@@ -526,7 +546,8 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
                 matricula_inmobiliaria=matricula,
                 radicado=radicado,
                 municipio=municipio,
-                valor_autoestimado=formatear_moneda(valor_autoestimado)
+                valor_autoestimado=formatear_moneda(valor_autoestimado),
+                calidad_solicitante=texto_calidad
             )
         
         dibujar_texto_justificado(texto_solicitud)
@@ -647,10 +668,18 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             x += col_widths[i]
         y_position -= row_h
 
-        # Datos del propietario (extraer de solicitante)
+        # Datos del propietario (extraer del predio, fallback a solicitante)
         c.setFont(font_normal, 7.5)
-        tipo_doc = solicitante.get("tipo_documento", "CC") if isinstance(solicitante, dict) else "CC"
-        nro_doc = str(solicitante.get("numero_documento", solicitante.get("documento", "")) if isinstance(solicitante, dict) else "").replace('.', '').replace(',', '').zfill(12)
+        propietario = predio.get("propietarios", [{}]) if predio else []
+        if propietario and len(propietario) > 0:
+            prop = propietario[0]
+            nombre_prop = prop.get("nombre_propietario", prop.get("nombre", ""))[:40]
+            tipo_doc = prop.get("tipo_documento", "CC")
+            nro_doc = str(prop.get("numero_documento", prop.get("documento", ""))).replace('.', '').replace(',', '').zfill(12)
+        else:
+            nombre_prop = solicitante_nombre[:40] if solicitante_nombre else ""
+            tipo_doc = solicitante.get("tipo_documento", "CC") if isinstance(solicitante, dict) else "CC"
+            nro_doc = str(solicitante_documento).replace('.', '').replace(',', '').zfill(12)
         destino = predio.get("destino_economico", "R") if predio else "R"
 
         # Fila de datos
@@ -661,7 +690,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         x += col_widths[0]
 
         c.rect(x, y_position - row_h, col_widths[1], row_h, fill=0, stroke=1)
-        draw_cell_text(c, solicitante_nombre[:40] if solicitante_nombre else "", x, col_widths[1], y_position, row_h, default_fs=7.5)
+        draw_cell_text(c, nombre_prop if nombre_prop else "", x, col_widths[1], y_position, row_h, default_fs=7.5)
         x += col_widths[1]
 
         c.rect(x, y_position - row_h, col_widths[2], row_h, fill=0, stroke=1)
@@ -912,12 +941,14 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         if subtipo == 'revision_avaluo':
             texto_art2 = plantilla['articulo_2_aceptar'].format(
                 solicitante_nombre=solicitante_nombre,
-                codigo_predial=codigo_predial
+                codigo_predial=codigo_predial,
+                calidad_solicitante_corto=texto_calidad_corto
             )
         else:
             texto_art2 = plantilla['articulo_2_aceptar'].format(
                 solicitante_nombre=solicitante_nombre,
                 codigo_predial=codigo_predial,
+                calidad_solicitante_corto=texto_calidad_corto,
                 matricula_inmobiliaria=matricula,
                 zona=zona,
                 municipio=municipio,
@@ -927,12 +958,14 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         if subtipo == 'revision_avaluo':
             texto_art2 = plantilla['articulo_2_rechazar'].format(
                 solicitante_nombre=solicitante_nombre,
-                codigo_predial=codigo_predial
+                codigo_predial=codigo_predial,
+                calidad_solicitante_corto=texto_calidad_corto
             )
         else:
             texto_art2 = plantilla['articulo_2_rechazar'].format(
                 solicitante_nombre=solicitante_nombre,
                 codigo_predial=codigo_predial,
+                calidad_solicitante_corto=texto_calidad_corto,
                 matricula_inmobiliaria=matricula,
                 zona=zona,
                 municipio=municipio,

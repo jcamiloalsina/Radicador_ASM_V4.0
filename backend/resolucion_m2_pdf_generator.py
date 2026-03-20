@@ -81,7 +81,7 @@ def get_m2_plantilla():
         ),
         "considerando_intro": (
             "Qué, el señor {solicitante_nombre}, identificado con la Cédula de Ciudadanía No. {solicitante_documento}, "
-            "en su condición de propietario de un predio que hace parte de uno de mayor "
+            "{calidad_solicitante} de un predio que hace parte de uno de mayor "
             "extensión identificado con el código catastral {codigo_origen}, del Municipio de {municipio}, "
             "radicó con el número {radicado}, ante el Gestor Catastral de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios, una solicitud de trámite catastral "
@@ -137,6 +137,7 @@ def generate_resolucion_m2_pdf(
     elaboro: str = "",
     aprobo: str = "",
     texto_considerando: str = None,  # Texto personalizado para considerandos
+    calidad_solicitante: str = "propietario",
 ) -> bytes:
     """
     Genera un PDF de resolución M2 (Englobe/Desengloble)
@@ -146,7 +147,15 @@ def generate_resolucion_m2_pdf(
     c = canvas.Canvas(buffer, pagesize=letter)
     
     plantilla = get_m2_plantilla()
-    
+
+    CALIDADES = {
+        'propietario': 'en su condición de propietario',
+        'apoderado': 'en calidad de apoderado del propietario',
+        'representante_legal': 'en calidad de representante legal del propietario',
+        'poseedor': 'en su condición de poseedor'
+    }
+    texto_calidad = CALIDADES.get(calidad_solicitante, CALIDADES['propietario'])
+
     # Helper para formatear área con unidades de medida
     def formatear_area(area_valor):
         """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
@@ -393,6 +402,9 @@ def generate_resolucion_m2_pdf(
             texto_procesado = texto_procesado.replace('(subtipo)', subtipo or '')
         except Exception:
             pass
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_procesado:
+            texto_procesado = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_procesado}"
         # Respetar saltos de línea/párrafo tal como fueron escritos
         parrafos = texto_procesado.split('\n')
         for idx_p, parrafo in enumerate(parrafos):
@@ -410,7 +422,8 @@ def generate_resolucion_m2_pdf(
             solicitante_documento=solicitante.get("documento", ""),
             municipio=municipio,
             codigo_origen=codigo_origen,
-            radicado=radicado
+            radicado=radicado,
+            calidad_solicitante=texto_calidad
         )
         dibujar_texto_justificado(considerando_intro, font_size=10)
         y_position -= 6

@@ -363,6 +363,9 @@ def generate_resolucion_pdf(
             texto_procesado = texto_procesado.replace('(avaluo)', avaluo or '')
         except Exception:
             pass
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_procesado:
+            texto_procesado = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_procesado}"
         # Respetar saltos de línea/párrafo tal como fueron escritos
         parrafos = texto_procesado.split('\n')
         for idx_p, parrafo in enumerate(parrafos):

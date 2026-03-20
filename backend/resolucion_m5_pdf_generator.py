@@ -88,7 +88,7 @@ def get_m5_plantilla_cancelacion():
             "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la CANCELACIÓN del predio identificado con código predial nacional {codigo_predial}, "
-            "lo anterior en su calidad de propietario(a) del predio."
+            "lo anterior {calidad_solicitante}."
         ),
         "considerando_motivo": (
             "Qué, la solicitud se centra en: \"{motivo_solicitud}\" argumenta el peticionario."
@@ -158,7 +158,7 @@ def get_m5_plantilla_inscripcion():
             "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la INSCRIPCIÓN de un predio nuevo en el catastro municipal, identificado con la matrícula "
-            "inmobiliaria No. {matricula_inmobiliaria}, lo anterior en su calidad de propietario(a) del predio."
+            "inmobiliaria No. {matricula_inmobiliaria}, lo anterior {calidad_solicitante}."
         ),
         "considerando_motivo": (
             "Qué, la solicitud se centra en: \"{motivo_solicitud}\" argumenta el peticionario."
@@ -261,7 +261,15 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # Datos del solicitante
     solicitante_nombre = solicitante.get('nombre', nombre_propietario)
     solicitante_documento = solicitante.get('documento', num_doc)
-    
+    calidad_solicitante = data.get('calidad_solicitante', 'propietario')
+    CALIDADES = {
+        'propietario': 'en su calidad de propietario(a) del predio',
+        'apoderado': 'en calidad de apoderado del propietario(a) del predio',
+        'representante_legal': 'en calidad de representante legal del propietario(a) del predio',
+        'poseedor': 'en su calidad de poseedor(a) del predio'
+    }
+    texto_calidad = CALIDADES.get(calidad_solicitante, CALIDADES['propietario'])
+
     radicado = data.get('radicado', '')
     motivo_solicitud = data.get('motivo_solicitud', '')
     
@@ -723,6 +731,9 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
             texto_procesado = texto_procesado.replace('(vigencia)', str(vigencia_cancelacion or vigencia_inscripcion or datetime.now().year))
         except Exception:
             pass
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_procesado:
+            texto_procesado = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_procesado}"
         c.setFillColor(NEGRO)
         # Respetar saltos de línea/párrafo tal como fueron escritos
         parrafos = texto_procesado.split('\n')
@@ -747,7 +758,8 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
             solicitante_documento=solicitante_documento,
             radicado=radicado,
             codigo_predial=codigo_predial,
-            matricula_inmobiliaria=matricula
+            matricula_inmobiliaria=matricula,
+            calidad_solicitante=texto_calidad
         )
         dibujar_texto_justificado(texto_solicitud)
         y_position -= 6

@@ -163,7 +163,7 @@ function PropietariosComparativos({ anteriores = [], nuevos = [] }) {
                 <div key={i} className="text-sm bg-white p-2 rounded border border-emerald-200">
                   <p className="font-medium text-emerald-700">{getNombreCompleto(p)}</p>
                   <p className="text-xs text-emerald-600">
-                    {p.tipo_documento || 'CC'}: {p.numero_documento || '-'}
+                    {p.tipo_documento || 'CC'}: {p.numero_documento || p.documento || '-'}
                   </p>
                 </div>
               ))}
@@ -183,7 +183,8 @@ export default function GestionPropuestas() {
   const [propuestas, setPropuestas] = useState([]);
   const [prediosSinCambios, setPrediosSinCambios] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState('pendiente');
+  const esGestorInit = user?.role === 'gestor';
+  const [filtroEstado, setFiltroEstado] = useState(esGestorInit ? 'subsanacion' : 'pendiente');
   const [filtroTipo, setFiltroTipo] = useState('propuestas'); // 'propuestas' o 'sin_cambios'
   const [propuestaDetalle, setPropuestaDetalle] = useState(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
@@ -1253,16 +1254,16 @@ export default function GestionPropuestas() {
                               <Label className="text-[10px]">Número</Label>
                               <Input
                                 className="h-8 text-xs"
-                                value={prop.numero_documento || ''}
+                                value={prop.numero_documento || prop.documento || ''}
                                 onChange={(e) => {
                                   const newProps = [...datosEditados.propietarios];
-                                  newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12)};
+                                  newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12), documento: e.target.value.replace(/\D/g, '').slice(0, 12)};
                                   setDatosEditados({...datosEditados, propietarios: newProps});
                                 }}
                                 onBlur={(e) => {
                                   if (e.target.value) {
                                     const newProps = [...datosEditados.propietarios];
-                                    newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0')};
+                                    newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0'), documento: e.target.value.replace(/\D/g, '').padStart(12, '0')};
                                     setDatosEditados({...datosEditados, propietarios: newProps});
                                   }
                                 }}
@@ -1628,10 +1629,10 @@ export default function GestionPropuestas() {
                             <Label className="text-[10px]">Número</Label>
                             <Input
                               className="h-8 text-xs"
-                              value={prop.numero_documento || ''}
+                              value={prop.numero_documento || prop.documento || ''}
                               onChange={(e) => {
                                 const newProps = [...datosSubsanacion.propietarios];
-                                newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12)};
+                                newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12), documento: e.target.value.replace(/\D/g, '').slice(0, 12)};
                                 setDatosSubsanacion({...datosSubsanacion, propietarios: newProps});
                               }}
                             />

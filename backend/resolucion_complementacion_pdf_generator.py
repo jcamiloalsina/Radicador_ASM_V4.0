@@ -686,6 +686,9 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
             texto_procesado = texto_procesado.replace('(vigencia)', str(vigencia_cancelacion or vigencia_inscripcion or datetime.now().year))
         except Exception:
             pass
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_procesado:
+            texto_procesado = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_procesado}"
         c.setFillColor(NEGRO)
         # Respetar saltos de línea/párrafo tal como fueron escritos
         parrafos = texto_procesado.split('\n')

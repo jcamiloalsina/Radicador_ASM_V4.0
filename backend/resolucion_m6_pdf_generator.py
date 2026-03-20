@@ -112,7 +112,7 @@ def get_rectificacion_area_plantilla():
             "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la RECTIFICACIÓN DEL ÁREA del predio identificado con código predial nacional {codigo_predial}, "
-            "lo anterior en su calidad de propietario(a) del predio."
+            "lo anterior {calidad_solicitante}."
         ),
         "considerando_area_actual": (
             "Qué, actualmente el predio se encuentra inscrito en el catastro con un área de terreno de {area_terreno_anterior} m² "
@@ -248,7 +248,15 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
     # Datos del solicitante
     solicitante_nombre = solicitante.get('nombre', propietario_nombre)
     solicitante_documento = solicitante.get('documento', propietario_documento)
-    
+    calidad_solicitante = data.get('calidad_solicitante', 'propietario')
+    CALIDADES = {
+        'propietario': 'en su calidad de propietario(a) del predio',
+        'apoderado': 'en calidad de apoderado del propietario(a) del predio',
+        'representante_legal': 'en calidad de representante legal del propietario(a) del predio',
+        'poseedor': 'en su calidad de poseedor(a) del predio'
+    }
+    texto_calidad = CALIDADES.get(calidad_solicitante, CALIDADES['propietario'])
+
     # Código predial
     codigo_predial = predio.get('codigo_predial_nacional') or predio.get('NPN', '') or predio.get('codigo_predial', '')
     matricula = datos_predio.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
@@ -706,6 +714,9 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
             texto_procesado = texto_procesado.replace('(area_construida_nueva)', formatear_area(area_construida_nueva))
         except Exception:
             pass
+        # Inyectar radicado automáticamente si no fue mencionado en el texto
+        if radicado and radicado not in texto_procesado:
+            texto_procesado = f"Trámite radicado bajo el consecutivo No. {radicado}.\n{texto_procesado}"
         c.setFillColor(NEGRO)
         # Respetar saltos de línea/párrafo tal como fueron escritos
         parrafos = texto_procesado.split('\n')
@@ -727,7 +738,8 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
             solicitante_nombre=solicitante_nombre,
             solicitante_documento=solicitante_documento,
             radicado=radicado,
-            codigo_predial=codigo_predial
+            codigo_predial=codigo_predial,
+            calidad_solicitante=texto_calidad
         )
         dibujar_texto_justificado(texto_solicitud)
         y_position -= 6

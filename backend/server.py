@@ -563,6 +563,7 @@ class SolicitudMutacionCreate(BaseModel):
     predios_cancelados: List[dict] = []
     predios_inscritos: List[dict] = []
     gestor_apoyo_id: Optional[str] = None
+    calidad_solicitante: Optional[str] = None  # propietario, apoderado, representante_legal, poseedor
     observaciones: Optional[str] = None
     # Para M1
     predio_id: Optional[str] = None
@@ -15714,6 +15715,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "predios_cancelados": predios_cancelados,
             "predios_inscritos": predios_inscritos,
             "solicitante": solicitante,
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
             "observaciones": solicitud.get('observaciones', ''),
             "elaborado_por": solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             "revisado_por": aprobador.get("full_name", ""),
@@ -15740,11 +15742,12 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             predios_inscritos=predios_inscritos,
             elaboro=solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             aprobo=aprobador.get("full_name", ""),
-            texto_considerando=solicitud.get('texto_considerando')
+            texto_considerando=solicitud.get('texto_considerando'),
+            calidad_solicitante=solicitud.get('calidad_solicitante', 'propietario')
         )
         with open(filepath, 'wb') as f:
             f.write(pdf_bytes)
-        
+
         # ========================================
         # APLICAR CAMBIOS A LOS PREDIOS
         # ========================================
@@ -16151,6 +16154,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
             "fechas_inscripcion": fechas_inscripcion,
             "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
             "elaborado_por": solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             "revisado_por": aprobador.get("full_name", ""),
             "codigo_verificacion": codigo_verificacion_m3,
@@ -16488,6 +16492,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "radicado": radicado,
             "predio": predio,
             "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
             "avaluo_anterior": solicitud.get('avaluo_anterior') or predio.get('avaluo', 0),
             "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
             "motivo_solicitud": solicitud.get('motivo_solicitud', ''),
@@ -16792,6 +16797,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "municipio": municipio_nombre,
             "radicado": radicado,
             "solicitante": solicitante,
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
             "predio": predio_m5,
             "vigencia": vigencia,
             "motivo_solicitud": motivo_solicitud,
@@ -17135,6 +17141,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             "municipio": municipio_nombre,
             "radicado": radicado,
             "solicitante": solicitante,
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
             "predio": predio_completo,
             "area_terreno_anterior": area_terreno_anterior,
             "area_terreno_nueva": area_terreno_nueva,
@@ -17582,6 +17589,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
             "texto_considerando": solicitud.get('texto_considerando', ''),
             "predio": predio_db or predio_data,
             "solicitante": solicitante,
+            "calidad_solicitante": solicitud.get('calidad_solicitante', 'propietario'),
             "propietarios_anteriores": propietarios_anteriores,
             "propietarios_nuevos": propietarios_nuevos,
             "matricula_nueva": matricula_nueva,
@@ -22439,7 +22447,7 @@ async def estadisticas_avanzadas_proyecto(
             {"es_mejora": {"$exists": False}}
         ]
     })
-    
+
     # 2. Contar mejoras nuevas aprobadas
     mejoras_nuevas_aprobadas = await db.propuestas_cambio_actualizacion.count_documents({
         "proyecto_id": proyecto_id,
@@ -22447,44 +22455,57 @@ async def estadisticas_avanzadas_proyecto(
         "estado": "aprobada",
         "es_mejora": True
     })
-    
-    # 3. Contar visitas firmadas
-    visitas_firmadas = await db.predios_actualizacion.count_documents({
+
+    # Obtener códigos de predios nuevos/mejoras aprobadas para excluirlos de otros conteos
+    codigos_nuevos_cursor = db.propuestas_cambio_actualizacion.find(
+        {"proyecto_id": proyecto_id, "tipo": "predio_nuevo", "estado": "aprobada"},
+        {"codigo_predial": 1, "_id": 0}
+    )
+    codigos_nuevos_list = await codigos_nuevos_cursor.to_list(5000)
+    codigos_nuevos = set(p.get("codigo_predial", "") for p in codigos_nuevos_list if p.get("codigo_predial"))
+
+    # 3. Contar visitas firmadas (excluyendo predios nuevos/mejoras para evitar doble conteo)
+    filtro_firmadas = {
         "proyecto_id": proyecto_id,
         "estado_visita": "visitado_firmado"
-    })
-    
+    }
+    if codigos_nuevos:
+        filtro_firmadas["$and"] = [
+            {"codigo_predial": {"$nin": list(codigos_nuevos)}},
+            {"numero_predial": {"$nin": list(codigos_nuevos)}}
+        ]
+    visitas_firmadas = await db.predios_actualizacion.count_documents(filtro_firmadas)
+
     # 4. Contar cancelaciones aprobadas
     cancelaciones_aprobadas = await db.propuestas_cambio_actualizacion.count_documents({
         "proyecto_id": proyecto_id,
         "tipo": "cancelacion",
         "estado": "aprobada"
     })
-    
-    # 5. Contar predios con cambios aprobados (actualizados)
-    # Incluye: propuestas de cambio aprobadas + predios con estado_visita = 'actualizado'
-    propuestas_cambio_aprobadas = await db.propuestas_cambio_actualizacion.count_documents({
-        "proyecto_id": proyecto_id,
-        "tipo": "cambio",
-        "estado": "aprobada"
-    })
-    
-    # Contar predios con estado_visita = 'actualizado' (actualizaciones directas)
-    predios_actualizados_directos = await db.predios_actualizacion.count_documents({
+
+    # 5. Contar predios actualizados (excluyendo predios nuevos/mejoras para evitar doble conteo)
+    filtro_actualizados = {
         "proyecto_id": proyecto_id,
         "estado_visita": "actualizado"
-    })
-    
-    # Total de cambios/actualizados = propuestas aprobadas + actualizaciones directas
-    # Nota: Usamos el mayor de los dos para evitar doble conteo si coinciden
-    cambios_aprobados = max(propuestas_cambio_aprobadas, predios_actualizados_directos)
-    
+    }
+    if codigos_nuevos:
+        filtro_actualizados["$and"] = [
+            {"codigo_predial": {"$nin": list(codigos_nuevos)}},
+            {"numero_predial": {"$nin": list(codigos_nuevos)}}
+        ]
+    cambios_aprobados = await db.predios_actualizacion.count_documents(filtro_actualizados)
+
     # 6. Estadísticas adicionales de propuestas pendientes
     propuestas_pendientes = await db.propuestas_cambio_actualizacion.count_documents({
         "proyecto_id": proyecto_id,
-        "estado": "pendiente"
+        "estado": {"$in": ["pendiente", "reenviada"]}
     })
-    
+
+    propuestas_subsanacion = await db.propuestas_cambio_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "estado": "subsanacion"
+    })
+
     # 7. Contar predios por estado de visita
     pipeline_estados = [
         {"$match": {"proyecto_id": proyecto_id}},
@@ -22492,7 +22513,7 @@ async def estadisticas_avanzadas_proyecto(
     ]
     estados_cursor = db.predios_actualizacion.aggregate(pipeline_estados)
     estados_result = await estados_cursor.to_list(100)
-    
+
     estados_visita = {
         "pendiente": 0,
         "visitado": 0,
@@ -22500,22 +22521,13 @@ async def estadisticas_avanzadas_proyecto(
         "actualizado": 0,
         "cancelado": 0
     }
-    
+
     for e in estados_result:
         estado = e.get("_id", "pendiente") or "pendiente"
         if estado in estados_visita:
             estados_visita[estado] = e["count"]
-    
-    # 8. Contar mejoras totales (predios con código que NO termina en 0000)
-    total_mejoras = await db.predios_actualizacion.count_documents({
-        "proyecto_id": proyecto_id,
-        "$or": [
-            {"es_mejora": True},
-            {"codigo_predial": {"$regex": "(?<!0000)$"}},  # Código no termina en 0000
-        ]
-    })
-    
-    # También contar mejoras con método más preciso (últimos 4 caracteres != "0000")
+
+    # 8. Contar mejoras totales (últimos 4 caracteres != "0000")
     pipeline_mejoras = [
         {"$match": {"proyecto_id": proyecto_id}},
         {"$addFields": {
@@ -22527,35 +22539,51 @@ async def estadisticas_avanzadas_proyecto(
     mejoras_cursor = db.predios_actualizacion.aggregate(pipeline_mejoras)
     mejoras_result = await mejoras_cursor.to_list(1)
     total_mejoras_preciso = mejoras_result[0]["total"] if mejoras_result else 0
-    
+
     # Total de predios en el proyecto
     total_predios = await db.predios_actualizacion.count_documents({"proyecto_id": proyecto_id})
-    
+
+    # 9. Calcular porcentaje de avance
+    # Predios procesados = visitado_firmado + actualizado + cancelado (sin doble conteo con nuevos)
+    total_procesados = (
+        predios_nuevos_aprobados + mejoras_nuevas_aprobadas +
+        visitas_firmadas + cancelaciones_aprobadas + cambios_aprobados
+    )
+    porcentaje_avance = round((total_procesados / total_predios * 100), 1) if total_predios > 0 else 0
+
     return {
         "proyecto_id": proyecto_id,
         "proyecto_nombre": proyecto.get("nombre", ""),
-        
-        # Estadísticas de aprobaciones (lo solicitado)
+
+        # Estadísticas de aprobaciones (sin doble conteo)
         "aprobaciones": {
             "predios_nuevos": predios_nuevos_aprobados,
             "mejoras_nuevas": mejoras_nuevas_aprobadas,
             "visitas_firmadas": visitas_firmadas,
             "cancelaciones": cancelaciones_aprobadas,
             "cambios_predios": cambios_aprobados,
-            "total_aprobaciones": predios_nuevos_aprobados + mejoras_nuevas_aprobadas + cancelaciones_aprobadas + cambios_aprobados
+            "total_aprobaciones": total_procesados
         },
-        
+
         # Propuestas pendientes
         "propuestas_pendientes": propuestas_pendientes,
-        
+        "propuestas_subsanacion": propuestas_subsanacion,
+
         # Estados de visita
         "estados_visita": estados_visita,
-        
+
         # Totales
         "totales": {
             "predios": total_predios,
             "mejoras": total_mejoras_preciso,
             "terrenos": total_predios - total_mejoras_preciso
+        },
+
+        # Porcentaje de avance
+        "avance": {
+            "procesados": total_procesados,
+            "total": total_predios,
+            "porcentaje": porcentaje_avance
         }
     }
 
@@ -25780,7 +25808,7 @@ async def aprobar_propuesta(
     if not propuesta:
         raise HTTPException(status_code=404, detail="Propuesta no encontrada")
     
-    if propuesta.get('estado') != 'pendiente':
+    if propuesta.get('estado') not in ['pendiente', 'reenviada']:
         raise HTTPException(status_code=400, detail="La propuesta ya fue revisada")
     
     # Actualizar propuesta
@@ -31933,10 +31961,11 @@ async def crear_solicitud_mutacion(
         solicitud_id = str(uuid.uuid4())
         
         # Verificar si el usuario puede aprobar directamente
+        # Si se asigna gestor de apoyo, NO aprobar directo (debe pasar por flujo de cartografía)
         puede_aprobar_directo = (
             current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
             Permission.APPROVE_CHANGES in current_user.get('permissions', [])
-        )
+        ) and not data.gestor_apoyo_id
         
         # Generar radicado usando el consecutivo global RASMGC (mismo que peticiones)
         radicado = data.radicado
@@ -32031,6 +32060,8 @@ async def crear_solicitud_mutacion(
             "construcciones_nuevas": data.construcciones_nuevas,
             # Texto personalizado para considerandos
             "texto_considerando": data.texto_considerando,
+            # Calidad del solicitante
+            "calidad_solicitante": data.calidad_solicitante or "propietario",
             # Para Complementación
             "predio": data.predio,
             "matricula_nueva": data.matricula_nueva,
@@ -32421,6 +32452,45 @@ async def ejecutar_accion_solicitud(
                 "enlace": "/dashboard/pendientes?tab=mutaciones"
             })
         
+        # ===== DEVOLVER CARTOGRAFÍA AL GESTOR DE APOYO =====
+        elif accion == "devolver_cartografia":
+            puede_devolver = (
+                current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+                Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+            )
+            if not puede_devolver:
+                raise HTTPException(status_code=403, detail="No tiene permisos para devolver cartografía")
+
+            if solicitud.get('estado') != MutacionEstado.PENDIENTE_APROBACION:
+                raise HTTPException(status_code=400, detail="Solo se puede devolver cartografía de solicitudes pendientes de aprobación")
+
+            if not solicitud.get('gestor_apoyo_id'):
+                raise HTTPException(status_code=400, detail="Esta solicitud no tiene gestor de apoyo asignado")
+
+            nuevo_estado = MutacionEstado.PENDIENTE_CARTOGRAFIA
+            update_data = {
+                "gestor_apoyo_completado": False,
+                "gestor_apoyo_fecha_completado": None
+            }
+
+            # Notificar al gestor de apoyo
+            notificaciones.append({
+                "usuario_id": solicitud['gestor_apoyo_id'],
+                "titulo": f"⚠️ Cartografía devuelta para corrección",
+                "mensaje": f"La cartografía de la solicitud {solicitud['radicado']} fue devuelta por {current_user['full_name']}. Observaciones: {data.observaciones or 'Sin observaciones'}",
+                "tipo": "warning",
+                "enlace": "/dashboard/pendientes?tab=mis-asignaciones"
+            })
+
+            # Notificar al gestor original
+            notificaciones.append({
+                "usuario_id": solicitud['creado_por_id'],
+                "titulo": f"⚠️ Cartografía devuelta - {solicitud['radicado']}",
+                "mensaje": f"La cartografía de tu solicitud {solicitud['radicado']} fue devuelta al gestor de apoyo para correcciones.",
+                "tipo": "warning",
+                "enlace": "/dashboard/pendientes?tab=mutaciones"
+            })
+
         # ===== ENVIAR A APROBACIÓN (sin gestor de apoyo) =====
         elif accion == "enviar_aprobacion":
             nuevo_estado = MutacionEstado.PENDIENTE_APROBACION
@@ -32451,7 +32521,14 @@ async def ejecutar_accion_solicitud(
             )
             if not puede_aprobar:
                 raise HTTPException(status_code=403, detail="No tiene permisos para aprobar")
-            
+
+            # Validar que el gestor de apoyo haya completado su trabajo si fue asignado
+            if solicitud.get('gestor_apoyo_id') and not solicitud.get('gestor_apoyo_completado'):
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se puede aprobar: el gestor de apoyo aún no ha completado la cartografía. Espere a que finalice o devuelva la solicitud."
+                )
+
             nuevo_estado = MutacionEstado.APROBADO
             update_data = {
                 "aprobado_por_id": current_user['id'],

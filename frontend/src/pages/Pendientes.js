@@ -420,6 +420,7 @@ export default function Pendientes() {
       const mensajes = {
         aprobar: 'Solicitud de mutación aprobada exitosamente',
         devolver: 'Solicitud devuelta para correcciones',
+        devolver_cartografia: 'Cartografía devuelta al gestor de apoyo para correcciones',
         rechazar: 'Solicitud de mutación rechazada'
       };
       
@@ -2072,6 +2073,83 @@ export default function Pendientes() {
           
           {selectedMutacion && (
             <div className="space-y-4">
+              {/* Mini-stepper del flujo */}
+              {(() => {
+                const tieneApoyo = !!selectedMutacion.gestor_apoyo_id;
+                const estado = selectedMutacion.estado;
+                const pasos = tieneApoyo
+                  ? [
+                      { key: 'creada', label: 'Creada' },
+                      { key: 'cartografia', label: 'Cartografía' },
+                      { key: 'aprobacion', label: 'Aprobación' },
+                      { key: 'finalizada', label: 'Finalizada' }
+                    ]
+                  : [
+                      { key: 'creada', label: 'Creada' },
+                      { key: 'aprobacion', label: 'Aprobación' },
+                      { key: 'finalizada', label: 'Finalizada' }
+                    ];
+
+                let pasoActual = 0;
+                if (tieneApoyo) {
+                  if (estado === 'PENDIENTE_CARTOGRAFIA') pasoActual = 1;
+                  else if (estado === 'PENDIENTE_APROBACION') pasoActual = 2;
+                  else if (['APROBADO', 'FINALIZADO'].includes(estado)) pasoActual = 3;
+                  else if (estado === 'DEVUELTO') pasoActual = 2;
+                  else if (['RECHAZADO'].includes(estado)) pasoActual = 3;
+                } else {
+                  if (estado === 'PENDIENTE_APROBACION') pasoActual = 1;
+                  else if (['APROBADO', 'FINALIZADO'].includes(estado)) pasoActual = 2;
+                  else if (estado === 'DEVUELTO') pasoActual = 1;
+                  else if (['RECHAZADO'].includes(estado)) pasoActual = 2;
+                }
+
+                return (
+                  <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3 border">
+                    {pasos.map((paso, idx) => (
+                      <div key={paso.key} className="flex items-center flex-1">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                            idx < pasoActual ? 'bg-emerald-500 border-emerald-500 text-white' :
+                            idx === pasoActual ? 'bg-blue-500 border-blue-500 text-white' :
+                            'bg-white border-slate-300 text-slate-400'
+                          }`}>
+                            {idx < pasoActual ? '✓' : idx + 1}
+                          </div>
+                          <span className={`text-[10px] mt-1 font-medium ${
+                            idx <= pasoActual ? 'text-slate-700' : 'text-slate-400'
+                          }`}>{paso.label}</span>
+                        </div>
+                        {idx < pasos.length - 1 && (
+                          <div className={`flex-1 h-0.5 mx-2 ${
+                            idx < pasoActual ? 'bg-emerald-400' : 'bg-slate-200'
+                          }`} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Estado actual descriptivo */}
+              <div className={`text-center py-2 px-3 rounded-lg text-sm font-medium ${
+                selectedMutacion.estado === 'PENDIENTE_CARTOGRAFIA' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                selectedMutacion.estado === 'PENDIENTE_APROBACION' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                selectedMutacion.estado === 'APROBADO' || selectedMutacion.estado === 'FINALIZADO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                selectedMutacion.estado === 'DEVUELTO' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                selectedMutacion.estado === 'RECHAZADO' ? 'bg-red-50 text-red-700 border border-red-200' :
+                'bg-slate-50 text-slate-700 border border-slate-200'
+              }`}>
+                {selectedMutacion.estado === 'PENDIENTE_CARTOGRAFIA' && `En trabajo del gestor de apoyo: ${selectedMutacion.gestor_apoyo_nombre || ''}`}
+                {selectedMutacion.estado === 'PENDIENTE_APROBACION' && (selectedMutacion.gestor_apoyo_id
+                  ? `Cartografía completada - Pendiente de aprobación`
+                  : 'Pendiente de aprobación del coordinador')}
+                {(selectedMutacion.estado === 'APROBADO' || selectedMutacion.estado === 'FINALIZADO') && 'Aprobada - Resolución generada'}
+                {selectedMutacion.estado === 'DEVUELTO' && 'Devuelta para correcciones'}
+                {selectedMutacion.estado === 'RECHAZADO' && 'Rechazada'}
+                {!['PENDIENTE_CARTOGRAFIA', 'PENDIENTE_APROBACION', 'APROBADO', 'FINALIZADO', 'DEVUELTO', 'RECHAZADO'].includes(selectedMutacion.estado) && `Estado: ${selectedMutacion.estado}`}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-purple-50 p-3 rounded-lg">
                   <p className="text-xs text-purple-600 font-medium">Tipo de Mutación</p>
@@ -2086,14 +2164,19 @@ export default function Pendientes() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="bg-slate-50 p-3 rounded-lg">
                 <p className="text-xs text-slate-500 font-medium mb-2">Información General</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div><span className="text-slate-500">Municipio:</span> {selectedMutacion.municipio}</div>
                   <div><span className="text-slate-500">Creador:</span> {selectedMutacion.creado_por_nombre}</div>
                   {selectedMutacion.gestor_apoyo_nombre && (
-                    <div><span className="text-slate-500">Cartografía:</span> {selectedMutacion.gestor_apoyo_nombre}</div>
+                    <div><span className="text-slate-500">Gestor de apoyo:</span> {selectedMutacion.gestor_apoyo_nombre}
+                      {selectedMutacion.gestor_apoyo_completado
+                        ? <span className="ml-1 text-emerald-600 text-xs">(completado)</span>
+                        : <span className="ml-1 text-amber-600 text-xs">(en proceso)</span>
+                      }
+                    </div>
                   )}
                   <div><span className="text-slate-500">Fecha:</span> {formatDate(selectedMutacion.fecha_creacion)}</div>
                 </div>
@@ -2687,7 +2770,19 @@ export default function Pendientes() {
             <Button variant="outline" onClick={() => setShowMutacionModal(false)}>
               Cerrar
             </Button>
-            <Button 
+            {/* Devolver cartografía al gestor de apoyo (solo si tiene apoyo y cartografía completada) */}
+            {selectedMutacion?.gestor_apoyo_id && selectedMutacion?.gestor_apoyo_completado && (
+              <Button
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                onClick={() => handleMutacionAccion(selectedMutacion?.id, 'devolver_cartografia')}
+                disabled={procesandoMutacion || !observacionesMutacion.trim()}
+              >
+                {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Devolver Cartografía
+              </Button>
+            )}
+            <Button
               variant="outline"
               className="border-orange-300 text-orange-700 hover:bg-orange-50"
               onClick={() => handleMutacionAccion(selectedMutacion?.id, 'devolver')}
@@ -2696,7 +2791,7 @@ export default function Pendientes() {
               {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
               Devolver
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={() => handleMutacionAccion(selectedMutacion?.id, 'rechazar')}
               disabled={procesandoMutacion || !observacionesMutacion.trim()}
@@ -2704,10 +2799,11 @@ export default function Pendientes() {
               {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
               Rechazar
             </Button>
-            <Button 
+            <Button
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={() => handleMutacionAccion(selectedMutacion?.id, 'aprobar')}
-              disabled={procesandoMutacion}
+              disabled={procesandoMutacion || (selectedMutacion?.gestor_apoyo_id && !selectedMutacion?.gestor_apoyo_completado)}
+              title={selectedMutacion?.gestor_apoyo_id && !selectedMutacion?.gestor_apoyo_completado ? 'El gestor de apoyo aún no ha completado la cartografía' : ''}
             >
               {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
               Aprobar
