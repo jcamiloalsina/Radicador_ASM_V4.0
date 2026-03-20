@@ -13607,14 +13607,8 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
 
 @api_router.patch("/predios/{predio_id}")
 async def update_predio(predio_id: str, update_data: PredioUpdate, current_user: dict = Depends(get_current_user)):
-    """Actualiza un predio existente"""
-    # Usuario, Comunicaciones y Empresa no pueden modificar predios directamente
-    if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]:
-        raise HTTPException(status_code=403, detail="No tiene permiso para modificar predios")
-    
-    predio = await db.predios.find_one({"id": predio_id, "deleted": {"$ne": True}}, {"_id": 0})
-    if not predio:
-        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    """DESACTIVADO: Toda modificación de predios debe realizarse a través del módulo de Mutaciones."""
+    raise HTTPException(status_code=410, detail="Este endpoint fue desactivado. Use el módulo de Mutaciones y Resoluciones para modificar predios.")
     
     # Filtrar campos no nulos
     update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
@@ -13666,13 +13660,8 @@ async def update_predio(predio_id: str, update_data: PredioUpdate, current_user:
 
 @api_router.delete("/predios/{predio_id}")
 async def delete_predio(predio_id: str, current_user: dict = Depends(get_current_user)):
-    """Elimina un predio (soft delete)"""
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden eliminar predios")
-    
-    predio = await db.predios.find_one({"id": predio_id, "deleted": {"$ne": True}}, {"_id": 0})
-    if not predio:
-        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    """DESACTIVADO: Toda eliminación de predios debe realizarse a través del módulo de Mutaciones (M5)."""
+    raise HTTPException(status_code=410, detail="Este endpoint fue desactivado. Use el módulo de Mutaciones y Resoluciones (M5 Cancelación) para eliminar predios.")
     
     # Soft delete - NO eliminamos físicamente para evitar reutilizar códigos
     historial_entry = {
@@ -14873,10 +14862,9 @@ async def proponer_cambio_predio(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Propone un cambio en un predio (crear, modificar, eliminar).
-    Solo gestores y atención pueden proponer. Coordinadores aprueban directamente.
-    Opcionalmente puede asignar un gestor de apoyo para modificaciones.
+    DESACTIVADO: Toda modificación de predios debe realizarse a través del módulo de Mutaciones.
     """
+    raise HTTPException(status_code=410, detail="Este endpoint fue desactivado. Use el módulo de Mutaciones y Resoluciones para modificar predios.")
     # Verificar permisos - Usuarios, Comunicaciones y Empresa no pueden proponer cambios
     if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]:
         raise HTTPException(status_code=403, detail="No tiene permiso para proponer cambios en predios")
@@ -15586,13 +15574,13 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     nombre_solicitante=nombre_solicitante,
                     municipio=datos_predio.get("municipio", ""),
                     codigo_predio=codigo,
-                    tipo_mutacion="M1"
+                    tipo_mutacion="Cambio de Propietario (M1)"
                 )
 
                 # Enviar correo con el PDF adjunto
                 await send_email(
                     to_email=email_solicitante,
-                    subject=f"Resolución Aprobada - {numero_resolucion}",
+                    subject=f"Resolución Cambio de Propietario Aprobada - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
                     attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
@@ -16052,18 +16040,19 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                 nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
 
             if email_solicitante:
+                subtipo_label = "Englobe" if solicitud.get('subtipo') == 'englobe' else "Desenglobe"
                 email_body = get_resolucion_aprobada_email(
                     numero_resolucion=numero_resolucion,
                     radicado=radicado,
                     nombre_solicitante=nombre_solicitante,
                     municipio=municipio_nombre,
                     codigo_predio=predios_cancelados[0].get('codigo_predial_nacional', '') if predios_cancelados else '',
-                    tipo_mutacion="Desenglobe (M2)"
+                    tipo_mutacion=f"{subtipo_label} (M2)"
                 )
 
                 await send_email(
                     to_email=email_solicitante,
-                    subject=f"Resolución de Desenglobe Aprobada - {numero_resolucion}",
+                    subject=f"Resolución de {subtipo_label} Aprobada - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
                     attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
@@ -17834,11 +17823,8 @@ async def aprobar_rechazar_cambio(
     request: CambioAprobacionRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Aprueba o rechaza un cambio pendiente (solo coordinadores/admin o con permiso)"""
-    has_permission = await check_permission(current_user, Permission.APPROVE_CHANGES)
-    if not has_permission:
-        raise HTTPException(status_code=403, detail="No tiene permiso para aprobar cambios")
-    
+    """DESACTIVADO: Toda aprobación de cambios debe realizarse a través del módulo de Mutaciones."""
+    raise HTTPException(status_code=410, detail="Este endpoint fue desactivado. Use el módulo de Mutaciones y Resoluciones para aprobar cambios.")
     # Buscar el cambio
     cambio = await db.predios_cambios.find_one({"id": request.cambio_id}, {"_id": 0})
     

@@ -2038,18 +2038,8 @@ export default function Predios() {
     }
   };
 
-  const fetchCambiosPendientes = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/predios/cambios/pendientes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCambiosPendientes(res.data.cambios);
-      setShowPendientesDialog(true);
-    } catch (error) {
-      toast.error('Error al cargar cambios pendientes');
-    }
-  };
+  // DESACTIVADO: Cambios pendientes ahora se manejan por Mutaciones
+  const fetchCambiosPendientes = async () => {};
 
   const fetchCambiosHistorial = async () => {
     try {
@@ -2063,23 +2053,9 @@ export default function Predios() {
     }
   };
 
-  const handleAprobarRechazar = async (cambioId, aprobado, comentario = '') => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API}/predios/cambios/aprobar`, {
-        cambio_id: cambioId,
-        aprobado,
-        comentario
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(aprobado ? 'Cambio aprobado exitosamente' : 'Cambio rechazado');
-      fetchCambiosPendientes();
-      fetchCambiosStats();
-      fetchPredios();
-    } catch (error) {
-      toast.error('Error al procesar el cambio');
-    }
+  // DESACTIVADO: Aprobación de cambios ahora va por Mutaciones
+  const handleAprobarRechazar = async () => {
+    toast.info('Esta funcionalidad fue migrada al módulo de Mutaciones y Resoluciones.');
   };
 
   const handleExportExcel = async () => {
@@ -2446,10 +2422,14 @@ export default function Predios() {
     }
   };
 
+  // DESACTIVADO: Edición de predios ahora va por Mutaciones
   const handleUpdate = async () => {
-    if (isSavingUpdate) return; // Prevenir doble clic
+    toast.info('Esta funcionalidad fue migrada al módulo de Mutaciones y Resoluciones.');
+    setShowEditDialog(false);
+    return;
+    // --- Código legacy desactivado abajo ---
+    if (isSavingUpdate) return;
     setIsSavingUpdate(true);
-    
     try {
       const token = localStorage.getItem('token');
       
@@ -2621,8 +2601,12 @@ export default function Predios() {
     setShowDeleteModal(true);
   };
 
-  // Función para confirmar eliminación con datos del modal
+  // DESACTIVADO: Eliminación de predios ahora va por Mutaciones (M5)
   const handleConfirmDelete = async () => {
+    toast.info('Esta funcionalidad fue migrada al módulo de Mutaciones y Resoluciones (M5 Cancelación).');
+    setShowDeleteModal(false);
+    return;
+    // --- Código legacy desactivado abajo ---
     if (!predioAEliminar) return;
     if (isSavingDelete) return;
     

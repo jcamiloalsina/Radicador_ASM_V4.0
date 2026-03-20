@@ -749,42 +749,15 @@ export default function Pendientes() {
     }));
   };
 
+  // DESACTIVADO: Cambios pendientes del flujo viejo ya no se cargan
   const fetchPendientes = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/predios/cambios/pendientes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = response.data;
-      const cambios = data.cambios || (Array.isArray(data) ? data : []);
-      setCambiosPendientes(cambios);
-    } catch (error) {
-      console.error('Error loading pending changes:', error);
-      setCambiosPendientes([]);
-    } finally {
-      setLoading(false);
-    }
+    setCambiosPendientes([]);
+    setLoading(false);
   };
 
-  const handleAprobar = async (cambioId) => {
-    setProcesando(true);
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API}/predios/cambios/aprobar`, 
-        { cambio_id: cambioId, aprobado: true },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success('Cambio aprobado exitosamente');
-      fetchPendientes();
-      setSelectedCambio(null);
-      
-      // Emitir evento para actualizar el badge del menú
-      window.dispatchEvent(new CustomEvent('pendientesUpdated'));
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al aprobar cambio');
-    } finally {
-      setProcesando(false);
-    }
+  // DESACTIVADO: Aprobación de cambios ahora va por Mutaciones
+  const handleAprobar = async () => {
+    toast.info('Esta funcionalidad fue migrada al módulo de Mutaciones y Resoluciones.');
   };
 
   const openRechazarModal = (cambio) => {
@@ -793,12 +766,16 @@ export default function Pendientes() {
     setShowRechazarModal(true);
   };
 
+  // DESACTIVADO: Rechazo de cambios ahora va por Mutaciones
   const handleConfirmarRechazo = async () => {
+    toast.info('Esta funcionalidad fue migrada al módulo de Mutaciones y Resoluciones.');
+    setShowRechazarModal(false);
+    return;
+    // --- Código legacy desactivado abajo ---
     if (!motivoRechazo.trim()) {
       toast.error('Debe indicar el motivo del rechazo');
       return;
     }
-    
     setProcesando(true);
     try {
       const token = localStorage.getItem('token');
@@ -1282,7 +1259,7 @@ export default function Pendientes() {
   
   // Calcular totales según el rol
   const totalMisAsignaciones = misCreaciones.length + asignadosAMi.length + misAsignacionesApoyo.length + misSolicitudesMutacion.length;
-  const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes + mutacionesPendientes.length;
+  const totalPendientesAprobacion = prediosEnRevision + reaparicionesPendientes + mutacionesPendientes.length;
   
   // Título y descripción según el rol
   const pageTitle = puedeAprobar ? 'Pendientes' : 'Mis Asignaciones';
@@ -1501,8 +1478,8 @@ export default function Pendientes() {
                   </div>
                 )}
 
-                {/* Sección: Modificaciones Asignadas */}
-                {misAsignacionesApoyo.length > 0 && (
+                {/* Sección: Modificaciones Asignadas - DESACTIVADO: migrado a Mutaciones */}
+                {false && misAsignacionesApoyo.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
                       <Edit className="w-5 h-5 text-amber-600" />
@@ -1655,7 +1632,7 @@ export default function Pendientes() {
                 </Button>
               </div>
             )}
-            {(cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes) === 0 ? (
+            {(prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes) === 0 ? (
               <Card>
                 <CardContent className="py-16 text-center">
                   <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
@@ -1665,8 +1642,8 @@ export default function Pendientes() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {/* Modificaciones de Predios Existentes */}
-                {cambiosPendientes.map((cambio) => (
+                {/* Modificaciones de Predios Existentes - DESACTIVADO: migrado a Mutaciones */}
+                {false && cambiosPendientes.map((cambio) => (
                   <Card key={`mod-${cambio.id}`} className="hover:border-blue-300 transition-colors border-l-4 border-l-blue-500">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
