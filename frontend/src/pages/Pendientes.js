@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { 
   Clock, CheckCircle, XCircle, Building, User, MapPin,
-  FileText, Eye, Loader2, AlertTriangle, ArrowRight, ArrowLeft, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2, ExternalLink, Plus, Trash2
+  FileText, Eye, Loader2, AlertTriangle, ArrowRight, ArrowLeft, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2, ExternalLink, Plus, Trash2, Undo2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -455,6 +455,36 @@ export default function Pendientes() {
       window.dispatchEvent(new Event('pendientesUpdated'));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al procesar la acción');
+    } finally {
+      setProcesandoMutacion(false);
+    }
+  };
+
+  // ===== REVERTIR MUTACIÓN FINALIZADA =====
+  const handleRevertirMutacion = async (solicitudId) => {
+    if (!observacionesMutacion.trim()) {
+      toast.error('Debe escribir un motivo para la reversión');
+      return;
+    }
+    if (!window.confirm('¿Está seguro de REVERTIR esta mutación? Se restaurarán los predios a su estado anterior a la resolución. Esta acción no se puede deshacer.')) {
+      return;
+    }
+    setProcesandoMutacion(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/revertir`, {
+        motivo: observacionesMutacion
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Mutación revertida exitosamente. Los predios fueron restaurados.');
+      setShowMutacionModal(false);
+      setSelectedMutacion(null);
+      setObservacionesMutacion('');
+      fetchMutacionesPendientes();
+      window.dispatchEvent(new Event('pendientesUpdated'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al revertir la mutación');
     } finally {
       setProcesandoMutacion(false);
     }
@@ -2856,6 +2886,21 @@ export default function Pendientes() {
             <Button variant="outline" onClick={() => setShowMutacionModal(false)}>
               Cerrar
             </Button>
+            {/* Botón REVERTIR para mutaciones ya finalizadas/aprobadas */}
+            {['APROBADO', 'FINALIZADO'].includes(selectedMutacion?.estado) && !selectedMutacion?.revertida && (user?.role === 'coordinador' || user?.role === 'administrador') && (
+              <Button
+                variant="outline"
+                className="border-red-400 text-red-700 hover:bg-red-50"
+                onClick={() => handleRevertirMutacion(selectedMutacion?.id)}
+                disabled={procesandoMutacion || !observacionesMutacion.trim()}
+                title="Revierte los cambios aplicados a los predios y restaura su estado anterior"
+              >
+                {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Undo2 className="w-4 h-4 mr-2" />}
+                Revertir Mutación
+              </Button>
+            )}
+            {/* Botones de acción solo para mutaciones pendientes */}
+            {!['APROBADO', 'FINALIZADO', 'RECHAZADO', 'revertido'].includes(selectedMutacion?.estado) && (<>
             {/* Devolver cartografía al gestor de apoyo (solo si tiene apoyo y cartografía completada) */}
             {selectedMutacion?.gestor_apoyo_id && selectedMutacion?.gestor_apoyo_completado && (
               <Button
@@ -2894,6 +2939,7 @@ export default function Pendientes() {
               {generandoPreview ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
               Previsualizar y Aprobar
             </Button>
+            </>)}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -15144,6 +15144,109 @@ def obtener_datos_r1_r2(predio: dict) -> dict:
         'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
     }
 
+
+# ========================================
+# SNAPSHOT Y REVERSIÓN DE MUTACIONES
+# ========================================
+
+async def _guardar_snapshot_predios(solicitud_id: str, predios_ids: list, predios_creados_ids: list = None, tipo_mutacion: str = ""):
+    """
+    Guarda una copia del estado actual de los predios ANTES de aplicar cambios.
+    Esto permite revertir los cambios si la resolución se cancela.
+
+    - predios_ids: IDs de predios que serán MODIFICADOS o ELIMINADOS
+    - predios_creados_ids: IDs de predios que serán CREADOS (para eliminarlos en reversión)
+    """
+    snapshot = {
+        "id": str(uuid.uuid4()),
+        "solicitud_id": solicitud_id,
+        "tipo_mutacion": tipo_mutacion,
+        "fecha_snapshot": datetime.now(COLOMBIA_TZ).isoformat(),
+        "predios_originales": [],
+        "predios_creados_ids": predios_creados_ids or [],
+    }
+
+    for pid in predios_ids:
+        if not pid:
+            continue
+        predio = await db.predios.find_one({"id": pid}, {"_id": 0})
+        if predio:
+            snapshot["predios_originales"].append(predio)
+
+    await db.snapshots_mutaciones.insert_one(snapshot)
+    logging.info(f"Snapshot guardado para solicitud {solicitud_id}: {len(snapshot['predios_originales'])} predios, {len(snapshot['predios_creados_ids'])} a crear")
+    return snapshot["id"]
+
+
+async def _registrar_predios_creados_en_snapshot(solicitud_id: str, predios_creados_ids: list):
+    """
+    Actualiza el snapshot con los IDs de predios creados DESPUÉS de la inserción.
+    Necesario para M2 donde los predios se crean después del snapshot.
+    """
+    if not predios_creados_ids:
+        return
+    await db.snapshots_mutaciones.update_one(
+        {"solicitud_id": solicitud_id},
+        {"$set": {"predios_creados_ids": predios_creados_ids}},
+    )
+    logging.info(f"Snapshot actualizado para solicitud {solicitud_id}: {len(predios_creados_ids)} predios creados registrados")
+
+
+async def _revertir_mutacion(solicitud_id: str, revertido_por: dict) -> dict:
+    """
+    Revierte TODOS los cambios aplicados por una mutación aprobada.
+    Usa el snapshot guardado para restaurar predios a su estado original.
+    """
+    snapshot = await db.snapshots_mutaciones.find_one({"solicitud_id": solicitud_id}, {"_id": 0})
+    if not snapshot:
+        raise Exception(f"No se encontró snapshot para la solicitud {solicitud_id}. Solo se pueden revertir mutaciones aprobadas después de la implementación del sistema de reversión.")
+
+    resultados = {
+        "predios_restaurados": 0,
+        "predios_creados_eliminados": 0,
+        "predios_eliminados_restaurados": 0,
+    }
+
+    # 1. Restaurar predios originales (modificados o eliminados)
+    for predio_original in snapshot.get("predios_originales", []):
+        pid = predio_original.get("id")
+        if not pid:
+            continue
+
+        # Quitar campos que se añaden al eliminar
+        predio_restaurado = {k: v for k, v in predio_original.items() if k != "_id"}
+
+        # Reemplazar completamente el documento del predio
+        result = await db.predios.replace_one({"id": pid}, predio_restaurado, upsert=True)
+
+        # Si estaba en predios_eliminados, quitarlo
+        await db.predios_eliminados.delete_many({"id": pid})
+
+        resultados["predios_restaurados"] += 1
+        logging.info(f"Predio {pid} restaurado a estado original")
+
+    # 2. Eliminar predios que fueron CREADOS por la mutación (ej: M2 desenglobe crea nuevos)
+    for pid_creado in snapshot.get("predios_creados_ids", []):
+        result = await db.predios.delete_one({"id": pid_creado})
+        if result.deleted_count > 0:
+            resultados["predios_creados_eliminados"] += 1
+            logging.info(f"Predio creado {pid_creado} eliminado (reversión)")
+
+    # 3. Marcar snapshot como revertido
+    await db.snapshots_mutaciones.update_one(
+        {"solicitud_id": solicitud_id},
+        {"$set": {
+            "revertido": True,
+            "fecha_reversion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "revertido_por": revertido_por.get("full_name", ""),
+            "revertido_por_id": revertido_por.get("id", ""),
+        }}
+    )
+
+    logging.info(f"Mutación {solicitud_id} revertida: {resultados}")
+    return resultados
+
+
 async def _generar_resolucion_m1_multi_predio(cambio: dict, aprobador: dict, predios_m1: list) -> dict:
     """
     Genera una sola resolución M1 para múltiples predios.
@@ -15161,6 +15264,11 @@ async def _generar_resolucion_m1_multi_predio(cambio: dict, aprobador: dict, pre
                         f"El predio {pid} está bloqueado por proceso legal. "
                         f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}."
                     )
+
+        # SNAPSHOT: Guardar estado de predios antes de aplicar cambios
+        solicitud_id_m1 = cambio.get("id", "")
+        predios_ids_m1 = [pm.get("predio_id") for pm in predios_m1 if pm.get("predio_id")]
+        await _guardar_snapshot_predios(solicitud_id_m1, predios_ids_m1, tipo_mutacion="M1")
 
         # Usar el primer predio para obtener datos de municipio/numeración
         primer_predio_db = await db.predios.find_one({"id": predios_m1[0]["predio_id"]}, {"_id": 0})
@@ -15470,6 +15578,10 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         predios_m1 = cambio.get("predios_m1")
         if predios_m1 and len(predios_m1) > 0:
             return await _generar_resolucion_m1_multi_predio(cambio, aprobador, predios_m1)
+
+        # SNAPSHOT: Guardar estado del predio antes de aplicar cambios (M1 single)
+        if cambio.get("predio_id"):
+            await _guardar_snapshot_predios(cambio.get("id", ""), [cambio["predio_id"]], tipo_mutacion="M1")
 
         # Obtener predio actual para datos completos
         predio = None
@@ -16046,7 +16158,21 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         # ========================================
         # APLICAR CAMBIOS A LOS PREDIOS
         # ========================================
-        
+
+        # SNAPSHOT: Guardar estado de predios antes de aplicar cambios (M2)
+        predios_ids_m2 = []
+        for pc in predios_cancelados:
+            pc_id = pc.get('id')
+            if not pc_id:
+                npn_c = pc.get('npn') or pc.get('codigo_predial_nacional') or pc.get('codigo_predial')
+                if npn_c:
+                    p_found = await db.predios.find_one({"codigo_predial_nacional": npn_c}, {"_id": 0, "id": 1})
+                    if p_found:
+                        pc_id = p_found["id"]
+            if pc_id:
+                predios_ids_m2.append(pc_id)
+        await _guardar_snapshot_predios(solicitud.get('id', ''), predios_ids_m2, tipo_mutacion="M2")
+
         # 1. Procesar predios cancelados según tipo_cancelacion
         for predio_cancelado in predios_cancelados:
             predio_id = predio_cancelado.get('id')
@@ -16227,6 +16353,22 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             else:
                 await db.predios.insert_one(predio_doc)
         
+        # SNAPSHOT: Registrar IDs de predios creados para posible reversión
+        predios_creados_ids_m2 = [pi.get('id') or pi.get('codigo_predial_nacional') for pi in predios_inscritos]
+        # Buscar IDs reales insertados
+        ids_creados_reales = []
+        for pi in predios_inscritos:
+            pid_c = pi.get('id')
+            if pid_c:
+                ids_creados_reales.append(pid_c)
+            else:
+                npn_c = pi.get('codigo_predial_nacional') or pi.get('codigo_predial') or pi.get('npn', '')
+                if npn_c:
+                    p_creado = await db.predios.find_one({"codigo_predial_nacional": npn_c, "numero_resolucion": numero_resolucion}, {"_id": 0, "id": 1})
+                    if p_creado:
+                        ids_creados_reales.append(p_creado["id"])
+        await _registrar_predios_creados_en_snapshot(solicitud.get('id', ''), ids_creados_reales)
+
         # Guardar resolución en la colección
         resolucion_doc = {
             "id": str(uuid.uuid4()),
@@ -16394,13 +16536,13 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
     """
     try:
         from resolucion_m3_pdf_generator import generate_resolucion_m3_pdf
-        
+
         # Obtener datos de la solicitud
         municipio = solicitud.get('municipio', '')
         radicado = solicitud.get('radicado', '')
         predio_id = solicitud.get('predio_id', '')
         subtipo = solicitud.get('subtipo', '')  # cambio_destino o incorporacion_construccion
-        
+
         # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
         if predio_id:
             bloqueo_check = await verificar_predio_bloqueado(predio_id)
@@ -16411,15 +16553,18 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                     f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
                     f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
                 )
-        
+
         # Obtener predio
         predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
         if not predio:
             raise Exception(f"Predio no encontrado: {predio_id}")
-        
+
+        # SNAPSHOT: Guardar estado del predio antes de aplicar cambios (M3)
+        await _guardar_snapshot_predios(solicitud.get('id', ''), [predio_id], tipo_mutacion="M3")
+
         # Obtener nombre del municipio
         municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
-        
+
         # Generar número de resolución
         resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
@@ -16741,14 +16886,14 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
     """
     try:
         from resolucion_m4_pdf_generator import generate_resolucion_m4_pdf
-        
+
         # Obtener datos de la solicitud
         municipio = solicitud.get('municipio', '')
         radicado = solicitud.get('radicado', '')
         predio_id = solicitud.get('predio_id', '')
         subtipo = solicitud.get('subtipo', 'revision_avaluo')  # revision_avaluo o autoestimacion
         decision = solicitud.get('decision', 'aceptar')  # aceptar o rechazar
-        
+
         # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
         if predio_id:
             bloqueo_check = await verificar_predio_bloqueado(predio_id)
@@ -16759,15 +16904,18 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                     f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
                     f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
                 )
-        
+
         # Obtener predio
         predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
         if not predio:
             raise Exception(f"Predio no encontrado: {predio_id}")
-        
+
+        # SNAPSHOT: Guardar estado del predio antes de aplicar cambios (M4)
+        await _guardar_snapshot_predios(solicitud.get('id', ''), [predio_id], tipo_mutacion="M4")
+
         # Obtener nombre del municipio
         municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
-        
+
         # Generar número de resolución
         resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
@@ -17057,6 +17205,10 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                     f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
                 )
         
+        # SNAPSHOT: Guardar estado del predio antes de aplicar cambios (M5)
+        if predio_id:
+            await _guardar_snapshot_predios(solicitud.get('id', ''), [predio_id], tipo_mutacion="M5")
+
         # Determinar vigencia
         colombia_tz = ZoneInfo("America/Bogota")
         año_actual = datetime.now(colombia_tz).year
@@ -17064,7 +17216,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             vigencia = solicitud.get('vigencia_cancelacion', año_actual)
         else:
             vigencia = solicitud.get('vigencia_inscripcion', año_actual)
-        
+
         # Obtener código de municipio
         codigo_municipio = None
         for codigo, nombre in MUNICIPIOS_R1R2.items():
@@ -17352,6 +17504,10 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
                 )
         
+        # SNAPSHOT: Guardar estado del predio antes de aplicar cambios (M6)
+        if predio_id:
+            await _guardar_snapshot_predios(solicitud.get('id', ''), [predio_id], tipo_mutacion="M6")
+
         # Áreas anteriores y nuevas
         area_terreno_anterior = solicitud.get('area_terreno_anterior', 0)
         area_terreno_nueva = solicitud.get('area_terreno_nueva', 0)
@@ -17359,7 +17515,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         area_construida_nueva = solicitud.get('area_construida_nueva', 0)
         avaluo_anterior = solicitud.get('avaluo_anterior', predio_data.get('avaluo', 0))
         avaluo_nuevo = solicitud.get('avaluo_nuevo', avaluo_anterior)
-        
+
         # Obtener código de municipio
         codigo_municipio = None
         for codigo, nombre in MUNICIPIOS_R1R2.items():
@@ -17368,7 +17524,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                 break
         if not codigo_municipio:
             codigo_municipio = "54003"
-        
+
         # Obtener siguiente número de resolución
         numero_info = await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
         numero_resolucion = numero_info['numero_resolucion']
@@ -17768,6 +17924,10 @@ async def _generar_complementacion_multi_predio(solicitud: dict, aprobador: dict
                     bloqueo_info = bloqueo_check.get("info", {})
                     raise Exception(f"El predio {pid} está bloqueado. Motivo: {bloqueo_info.get('motivo', 'No especificado')}.")
 
+        # SNAPSHOT: Guardar estado de predios antes de aplicar cambios (COMPLEMENTACION multi)
+        predios_ids_comp = [pc.get("predio_id") for pc in predios_complementacion if pc.get("predio_id")]
+        await _guardar_snapshot_predios(solicitud.get('id', ''), predios_ids_comp, tipo_mutacion="COMPLEMENTACION")
+
         # Usar primer predio para municipio/numeración
         primer_predio_db = await db.predios.find_one({"id": predios_complementacion[0]["predio_id"]}, {"_id": 0})
         if not primer_predio_db:
@@ -18047,6 +18207,10 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         predios_complementacion = solicitud.get("predios_complementacion")
         if predios_complementacion and len(predios_complementacion) > 0:
             return await _generar_complementacion_multi_predio(solicitud, aprobador, predios_complementacion)
+
+        # SNAPSHOT: Guardar estado del predio antes de aplicar cambios (COMPLEMENTACION single)
+        if predio_id:
+            await _guardar_snapshot_predios(solicitud.get('id', ''), [predio_id], tipo_mutacion="COMPLEMENTACION")
 
         # Datos R1/R2 del predio
         def obtener_datos_r1_r2_comp(predio):
@@ -33652,6 +33816,118 @@ async def ejecutar_accion_solicitud(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# ============================================================
+# REVERSIÓN DE MUTACIONES APROBADAS
+# ============================================================
+
+@api_router.post("/solicitudes-mutacion/{solicitud_id}/revertir")
+async def revertir_solicitud_mutacion(
+    solicitud_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Revierte todos los cambios aplicados a predios por una mutación aprobada/finalizada.
+    Restaura los predios a su estado original usando el snapshot guardado.
+    Solo coordinadores y administradores pueden revertir.
+    """
+    try:
+        # Verificar permisos
+        if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+            raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden revertir mutaciones")
+
+        # Obtener motivo del body
+        try:
+            body = await request.json()
+            motivo = body.get('motivo', '')
+        except:
+            motivo = ''
+
+        if not motivo:
+            raise HTTPException(status_code=400, detail="Debe proporcionar un motivo para la reversión")
+
+        # Verificar que la solicitud existe y está aprobada/finalizada
+        solicitud = await db.solicitudes_mutacion.find_one({"id": solicitud_id}, {"_id": 0})
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+
+        if solicitud.get('estado') not in [MutacionEstado.APROBADO, MutacionEstado.FINALIZADO]:
+            raise HTTPException(status_code=400, detail=f"Solo se pueden revertir mutaciones aprobadas o finalizadas. Estado actual: {solicitud.get('estado')}")
+
+        # Verificar que no haya sido revertida antes
+        if solicitud.get('revertida'):
+            raise HTTPException(status_code=400, detail="Esta mutación ya fue revertida anteriormente")
+
+        # Ejecutar reversión
+        resultados = await _revertir_mutacion(solicitud_id, current_user)
+
+        # Actualizar solicitud como revertida
+        await db.solicitudes_mutacion.update_one(
+            {"id": solicitud_id},
+            {
+                "$set": {
+                    "estado": "revertido",
+                    "revertida": True,
+                    "fecha_reversion": datetime.now(COLOMBIA_TZ).isoformat(),
+                    "revertida_por_id": current_user['id'],
+                    "revertida_por_nombre": current_user['full_name'],
+                    "motivo_reversion": motivo,
+                },
+                "$push": {"historial": {
+                    "accion": "revertir",
+                    "estado_anterior": solicitud.get('estado'),
+                    "estado_nuevo": "revertido",
+                    "usuario_id": current_user['id'],
+                    "usuario_nombre": current_user['full_name'],
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
+                    "observaciones": motivo,
+                }}
+            }
+        )
+
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            accion="revertir_mutacion",
+            categoria="mutaciones",
+            descripcion=f"Revirtió mutación {solicitud.get('tipo', '')} - {solicitud.get('radicado', '')}. Motivo: {motivo}",
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_rol=current_user.get("role"),
+            municipio=solicitud.get("municipio", ""),
+            detalles={
+                "solicitud_id": solicitud_id,
+                "tipo_mutacion": solicitud.get('tipo'),
+                "radicado": solicitud.get('radicado'),
+                "numero_resolucion": solicitud.get('numero_resolucion'),
+                "resultados": resultados,
+            }
+        )
+
+        # Notificar al gestor creador
+        await crear_notificacion(
+            usuario_id=solicitud['creado_por_id'],
+            titulo=f"Mutación {solicitud.get('tipo', '')} revertida",
+            mensaje=f"La mutación {solicitud.get('radicado', '')} fue revertida por {current_user['full_name']}. Motivo: {motivo}",
+            tipo="warning",
+            enlace="/dashboard/mutaciones",
+            enviar_email=False
+        )
+
+        return {
+            "success": True,
+            "mensaje": "Mutación revertida exitosamente. Los predios fueron restaurados a su estado original.",
+            "resultados": resultados
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error revirtiendo mutación: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error revirtiendo mutación: {str(e)}")
 
 
 # ============================================================
