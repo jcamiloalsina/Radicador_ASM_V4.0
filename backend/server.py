@@ -27494,78 +27494,57 @@ async def generar_pdf_informe_visita(
     )
 
 
-@api_router.post("/actualizacion/proyectos/{proyecto_id}/descargar-pdfs-visitas")
-async def descargar_pdfs_visitas_masivo(
-    proyecto_id: str,
-    filtro: str = "todos",
-    current_user: dict = Depends(get_current_user)
-):
-    """Descarga masiva de PDFs de visitas en un ZIP. filtro: 'todos' o 'hoy'"""
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden descargar PDFs masivos")
+## Progreso global de generación de ZIPs de visitas
+zip_visitas_progress = {}
 
+def _generar_zip_visitas_sync(task_id: str, proyecto_id: str, proyecto: dict, predios: list, filtro: str, user_email: str, user_name: str, mongo_url: str, db_name: str):
+    """Genera ZIP de PDFs de visitas en un hilo separado para evitar timeout del proxy"""
     import zipfile
-    import tempfile
-    import base64
+    import threading
+    from pymongo import MongoClient
 
-    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
-    if not proyecto:
-        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    global zip_visitas_progress
+    zip_visitas_progress[task_id] = {"status": "running", "progress": 0, "generados": 0, "total": len(predios), "error": None}
 
-    # Filtro base: predios con visita completada
-    query = {
-        "proyecto_id": proyecto_id,
-        "estado_visita": {"$in": ["visitado", "visitado_firmado", "actualizado"]}
-    }
+    # Limpiar ZIPs de visitas anteriores
+    try:
+        for f in os.listdir("/app/uploads"):
+            if f.startswith("visitas_") and f.endswith(".zip"):
+                os.remove(f"/app/uploads/{f}")
+    except Exception:
+        pass
 
-    # Si filtro es "hoy", restringir por fecha
-    if filtro == "hoy":
-        hoy = datetime.now(COLOMBIA_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-        manana = hoy + timedelta(days=1)
-        query["visitado_en"] = {"$gte": hoy.isoformat(), "$lt": manana.isoformat()}
-
-    predios = await db.predios_actualizacion.find(query, {"_id": 0}).to_list(length=None)
-
-    if not predios:
-        raise HTTPException(status_code=404, detail="No se encontraron predios visitados" + (" hoy" if filtro == "hoy" else ""))
-
-    # Crear ZIP en archivo temporal
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp:
-        tmp_path = tmp.name
+    fecha_str = datetime.now(COLOMBIA_TZ).strftime('%Y%m%d_%H%M%S')
+    zip_filename = f"visitas_{proyecto.get('municipio', 'proyecto')}_{filtro}_{fecha_str}.zip"
+    zip_path = f"/app/uploads/{zip_filename}"
 
     try:
-        with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        sync_client = MongoClient(mongo_url)
+        sync_db = sync_client[db_name]
+
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             generados = 0
             errores = []
 
-            for predio in predios:
+            for idx, predio in enumerate(predios):
                 codigo = predio.get('codigo_predial') or predio.get('numero_predial', 'sin_codigo')
                 try:
-                    # Preparar datos de visita (misma lógica que el endpoint individual)
-                    visita = predio.get('formato_visita', {}) or predio.get('visita', {})
-                    if not visita:
-                        visita = {}
+                    visita = predio.get('formato_visita', {}) or predio.get('visita', {}) or {}
 
                     propietarios = (
-                        visita.get('propietarios_visita') or
-                        visita.get('propietarios') or
-                        predio.get('propietarios_visita') or
-                        predio.get('propietarios') or
-                        []
+                        visita.get('propietarios_visita') or visita.get('propietarios') or
+                        predio.get('propietarios_visita') or predio.get('propietarios') or []
                     )
                     construcciones = (
-                        visita.get('construcciones_visita') or
-                        visita.get('construcciones') or
-                        predio.get('construcciones_visita') or
-                        predio.get('construcciones') or
-                        []
+                        visita.get('construcciones_visita') or visita.get('construcciones') or
+                        predio.get('construcciones_visita') or predio.get('construcciones') or []
                     )
 
                     # Obtener codigo_homologado si falta
                     if not predio.get('codigo_homologado'):
                         codigo_para_buscar = predio.get('codigo_predial') or predio.get('numero_predial')
                         if codigo_para_buscar:
-                            predio_principal = await db.predios.find_one(
+                            predio_principal = sync_db.predios.find_one(
                                 {"codigo_predial_nacional": codigo_para_buscar},
                                 {"_id": 0, "codigo_homologado": 1}
                             )
@@ -27576,7 +27555,7 @@ async def descargar_pdfs_visitas_masivo(
                     if not predio.get('matricula_inmobiliaria'):
                         codigo_para_buscar = predio.get('codigo_predial') or predio.get('numero_predial')
                         if codigo_para_buscar:
-                            predio_principal = await db.predios.find_one(
+                            predio_principal = sync_db.predios.find_one(
                                 {"codigo_predial_nacional": codigo_para_buscar},
                                 {"_id": 0, "matricula_inmobiliaria": 1, "r2_registros": 1}
                             )
@@ -27591,11 +27570,7 @@ async def descargar_pdfs_visitas_masivo(
 
                     # Completar campos de visita
                     if not visita.get('nombre_reconocedor'):
-                        visita['nombre_reconocedor'] = (
-                            predio.get('nombre_reconocedor') or
-                            predio.get('visitado_por_nombre') or
-                            predio.get('visitado_por', '')
-                        )
+                        visita['nombre_reconocedor'] = predio.get('nombre_reconocedor') or predio.get('visitado_por_nombre') or predio.get('visitado_por', '')
                     if not visita.get('jur_matricula'):
                         visita['jur_matricula'] = predio.get('matricula_inmobiliaria', '')
                     if not visita.get('firma_visitado_base64'):
@@ -27608,43 +27583,112 @@ async def descargar_pdfs_visitas_masivo(
                         visita['fotos'] = predio.get('fotos_visita') or predio.get('fotos', [])
 
                     pdf_content = generar_pdf_visita_completo(
-                        proyecto=proyecto,
-                        predio=predio,
-                        visita=visita,
-                        propietarios=propietarios,
-                        construcciones=construcciones,
-                        current_user_email=current_user.get('email', ''),
-                        current_user_name=current_user.get('full_name', '')
+                        proyecto=proyecto, predio=predio, visita=visita,
+                        propietarios=propietarios, construcciones=construcciones,
+                        current_user_email=user_email, current_user_name=user_name
                     )
 
                     codigo_safe = codigo.replace('/', '_').replace('\\', '_')
-                    pdf_filename = f"informe_visita_{codigo_safe}.pdf"
-                    zipf.writestr(pdf_filename, pdf_content)
+                    zipf.writestr(f"informe_visita_{codigo_safe}.pdf", pdf_content)
                     generados += 1
 
                 except Exception as e:
-                    import traceback
-                    logger.error(f"Error generando PDF para predio {codigo}: {e}\n{traceback.format_exc()}")
+                    logging.error(f"Error generando PDF para predio {codigo}: {e}")
                     errores.append(codigo)
 
-        fecha_str = datetime.now(COLOMBIA_TZ).strftime('%Y%m%d_%H%M%S')
-        zip_filename = f"visitas_{proyecto.get('municipio', 'proyecto')}_{filtro}_{fecha_str}.zip"
+                # Actualizar progreso cada 10 predios
+                if (idx + 1) % 10 == 0 or idx == len(predios) - 1:
+                    zip_visitas_progress[task_id]["progress"] = int((idx + 1) / len(predios) * 100)
+                    zip_visitas_progress[task_id]["generados"] = generados
 
-        logger.info(f"ZIP de visitas generado: {generados} PDFs, {len(errores)} errores")
+        zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
+        logging.info(f"ZIP de visitas generado: {generados} PDFs, {len(errores)} errores, {zip_size_mb:.1f} MB")
 
-        from starlette.background import BackgroundTask
-        cleanup = BackgroundTask(os.unlink, tmp_path)
-        return FileResponse(
-            path=tmp_path,
-            filename=zip_filename,
-            media_type="application/zip",
-            headers={"X-Generados": str(generados), "X-Errores": str(len(errores))},
-            background=cleanup
-        )
+        zip_visitas_progress[task_id] = {
+            "status": "completed", "progress": 100, "generados": generados,
+            "errores": len(errores), "total": len(predios),
+            "filename": zip_filename, "size_mb": round(zip_size_mb, 1),
+            "download_url": f"/actualizacion/descargar-zip-visitas/{zip_filename}",
+            "error": None
+        }
+        sync_client.close()
+
     except Exception as e:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
-        raise HTTPException(status_code=500, detail=f"Error generando ZIP: {str(e)}")
+        logging.error(f"Error generando ZIP de visitas: {e}", exc_info=True)
+        zip_visitas_progress[task_id] = {"status": "error", "progress": 0, "error": str(e)}
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/descargar-pdfs-visitas")
+async def descargar_pdfs_visitas_masivo(
+    proyecto_id: str,
+    filtro: str = "todos",
+    current_user: dict = Depends(get_current_user)
+):
+    """Inicia generación masiva de PDFs de visitas en background. Retorna task_id para polling."""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden descargar PDFs masivos")
+
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    query = {
+        "proyecto_id": proyecto_id,
+        "estado_visita": {"$in": ["visitado", "visitado_firmado", "actualizado"]}
+    }
+    if filtro == "hoy":
+        hoy = datetime.now(COLOMBIA_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+        manana = hoy + timedelta(days=1)
+        query["visitado_en"] = {"$gte": hoy.isoformat(), "$lt": manana.isoformat()}
+
+    predios = await db.predios_actualizacion.find(query, {"_id": 0}).to_list(length=None)
+
+    if not predios:
+        raise HTTPException(status_code=404, detail="No se encontraron predios visitados" + (" hoy" if filtro == "hoy" else ""))
+
+    task_id = str(uuid.uuid4())
+    import threading
+    mongo_url = os.environ.get('MONGO_URL', 'mongodb://mongodb:27017')
+    db_name = os.environ.get('DB_NAME', 'catastro_asomunicipios')
+
+    t = threading.Thread(
+        target=_generar_zip_visitas_sync,
+        args=(task_id, proyecto_id, proyecto, predios, filtro, current_user.get('email', ''), current_user.get('full_name', ''), mongo_url, db_name),
+        daemon=True
+    )
+    t.start()
+
+    return {"task_id": task_id, "total": len(predios), "message": f"Generando {len(predios)} PDFs en background..."}
+
+
+@api_router.get("/actualizacion/zip-visitas-status/{task_id}")
+async def get_zip_visitas_status(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Consulta el progreso de la generación del ZIP de visitas"""
+    progress = zip_visitas_progress.get(task_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    return progress
+
+
+@api_router.get("/actualizacion/descargar-zip-visitas/{filename}")
+async def descargar_zip_visitas(filename: str, current_user: dict = Depends(get_current_user)):
+    """Descarga el ZIP de visitas generado"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+
+    # Sanitizar filename para evitar path traversal
+    safe_filename = os.path.basename(filename)
+    zip_path = f"/app/uploads/{safe_filename}"
+    if not os.path.exists(zip_path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+    # No borrar inmediatamente — el proxy puede necesitar tiempo para transferir
+    # Se borrará en la próxima generación o manualmente
+    return FileResponse(
+        path=zip_path, filename=safe_filename, media_type="application/zip"
+    )
 
 
 @api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-info-alfanumerica")

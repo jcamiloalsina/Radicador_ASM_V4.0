@@ -1535,10 +1535,29 @@ export default function VisorActualizacion() {
     return { codigosPorEstadoIndex: codigosIndex, prediosPorEstado: prediosCache };
   }, [prediosR1R2, terrenosConMejoras]);
   
-  // Predios filtrados por estado actual - acceso O(1) desde caché
+  // Índice de zona por código predial (desde geometrías)
+  const zonaPorCodigo = useMemo(() => {
+    const mapa = {};
+    if (geometrias?.features) {
+      for (const f of geometrias.features) {
+        const codigo = f.properties?.codigo_predial || f.properties?.numero_predial || f.properties?.codigo;
+        const zona = f.properties?.zona;
+        if (codigo && zona) mapa[codigo] = zona;
+      }
+    }
+    return mapa;
+  }, [geometrias]);
+
+  // Predios filtrados por estado Y zona - acceso O(1) desde caché
   const prediosFiltrados = useMemo(() => {
-    return prediosPorEstado[filterEstado] || prediosPorEstado.todos;
-  }, [prediosPorEstado, filterEstado]);
+    const porEstado = prediosPorEstado[filterEstado] || prediosPorEstado.todos;
+    if (filterZona === 'todos') return porEstado;
+    return porEstado.filter(p => {
+      const codigo = p.codigo_predial || p.numero_predial;
+      const zona = zonaPorCodigo[codigo];
+      return zona === filterZona;
+    });
+  }, [prediosPorEstado, filterEstado, filterZona, zonaPorCodigo]);
   
   // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
   const geometriasFiltradas = useMemo(() => {
@@ -3958,43 +3977,65 @@ export default function VisorActualizacion() {
   const handleDescargarPdfsMasivo = async (filtro) => {
     setShowDescargarPdfsMenu(false);
     setDescargandoPdfsMasivo(true);
-    const toastId = toast.loading(`Generando ZIP de PDFs (${filtro === 'hoy' ? 'visitas de hoy' : 'todas las visitas'})...`);
+    const toastId = toast.loading(`Iniciando generación de PDFs (${filtro === 'hoy' ? 'visitas de hoy' : 'todas las visitas'})...`);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(
+
+      // Paso 1: Iniciar generación en background
+      const initResponse = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoId}/descargar-pdfs-visitas?filtro=${filtro}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
-          timeout: 300000 // 5 minutos
-        }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
       );
 
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
-      const link = document.createElement('a');
-      link.href = url;
-      const disposition = response.headers['content-disposition'];
-      const filename = disposition
-        ? disposition.split('filename=')[1]?.replace(/"/g, '')
-        : `visitas_${filtro}_${new Date().toISOString().slice(0,10)}.zip`;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const { task_id, total } = initResponse.data;
+      toast.loading(`Generando ${total} PDFs... 0%`, { id: toastId });
 
-      const generados = response.headers['x-generados'] || '?';
-      toast.success(`ZIP descargado: ${generados} PDFs generados`, { id: toastId });
+      // Paso 2: Polling de progreso
+      let completed = false;
+      while (!completed) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          const statusRes = await axios.get(
+            `${API}/actualizacion/zip-visitas-status/${task_id}`,
+            { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+          );
+          const status = statusRes.data;
+
+          if (status.status === 'completed') {
+            completed = true;
+            toast.loading(`Descargando ZIP (${status.size_mb} MB)...`, { id: toastId });
+
+            // Paso 3: Descargar el ZIP
+            const downloadRes = await axios.get(
+              `${API}${status.download_url}`,
+              { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob', timeout: 300000 }
+            );
+            const url = window.URL.createObjectURL(new Blob([downloadRes.data], { type: 'application/zip' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = status.filename || `visitas_${filtro}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success(`ZIP descargado: ${status.generados} PDFs (${status.size_mb} MB)`, { id: toastId });
+          } else if (status.status === 'error') {
+            completed = true;
+            toast.error(`Error generando PDFs: ${status.error}`, { id: toastId });
+          } else {
+            toast.loading(`Generando PDFs... ${status.progress}% (${status.generados}/${total})`, { id: toastId });
+          }
+        } catch (pollError) {
+          console.error('[PDFs Masivo] Error en polling:', pollError);
+        }
+      }
     } catch (error) {
       if (error.response?.status === 404) {
         toast.error(`No se encontraron predios visitados${filtro === 'hoy' ? ' hoy' : ''}`, { id: toastId });
-      } else if (error.code === 'ECONNABORTED') {
-        toast.error('La descarga tardó demasiado. Intente de nuevo.', { id: toastId });
       } else {
-        toast.error('Error al descargar PDFs', { id: toastId });
+        toast.error(`Error: ${error.response?.data?.detail || error.message}`, { id: toastId });
       }
-      console.error(error);
     } finally {
       setDescargandoPdfsMasivo(false);
     }
@@ -4674,7 +4715,7 @@ export default function VisorActualizacion() {
             {construccionesFiltradas?.features?.length || construcciones?.features?.length || 0}
           </span>
         </button>
-        
+
         {filterEstado !== 'todos' && (
           <span className="text-slate-500 ml-auto flex items-center gap-1 text-[10px]">
             <span className="bg-slate-100 px-2 py-0.5 rounded">

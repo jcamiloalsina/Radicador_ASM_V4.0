@@ -389,17 +389,17 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     # Usar propietarios de la visita o del predio
     props_list = propietarios if propietarios else predio.get('propietarios', [])
     for idx, prop in enumerate(props_list[:6], 1):
-        nombre = f"{prop.get('nombre', '')} {prop.get('primer_apellido', '')} {prop.get('segundo_apellido', '')}".strip()
+        nombre = f"{prop.get('nombre') or ''} {prop.get('primer_apellido') or ''} {prop.get('segundo_apellido') or ''}".strip()
         if not nombre:
-            nombre = prop.get('nombre_completo', prop.get('razon_social', '-'))
+            nombre = prop.get('nombre_completo') or prop.get('nombre_propietario') or prop.get('razon_social') or '-'
         row_data = [
             str(idx),
             nombre[:22] if nombre else "-",
-            prop.get('tipo_documento', '-')[:4],
-            prop.get('numero_documento', prop.get('documento', '-')),
-            prop.get('estado', prop.get('estado_civil', '-'))[:10],
-            prop.get('genero', '-')[:6],
-            prop.get('grupo_etnico', '-')[:12]
+            (prop.get('tipo_documento') or '-')[:4],
+            prop.get('numero_documento') or prop.get('documento') or '-',
+            (prop.get('estado') or prop.get('estado_civil') or '-')[:10],
+            (prop.get('genero') or '-')[:6],
+            (prop.get('grupo_etnico') or '-')[:12]
         ]
         c.setStrokeColor(VERDE_MEDIO)
         c.rect(left, y - 11, sum(cols), 11, stroke=1, fill=0)
