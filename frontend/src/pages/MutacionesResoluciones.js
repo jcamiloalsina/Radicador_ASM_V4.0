@@ -2758,6 +2758,11 @@ export default function MutacionesResoluciones() {
     try {
       const token = localStorage.getItem('token');
       
+      // Para ENGLOBE: usar el predio_resultante como único predio inscrito
+      const prediosInscritosApoyo = (m2Data.subtipo === 'englobe' && m2Data.predio_resultante)
+        ? [m2Data.predio_resultante]
+        : m2Data.predios_inscritos;
+
       // Crear la solicitud
       const response = await axios.post(`${API}/solicitudes-mutacion`, {
         tipo: 'M2',
@@ -2767,7 +2772,7 @@ export default function MutacionesResoluciones() {
         solicitante: m2Data.solicitante,
         calidad_solicitante: m2Data.calidad_solicitante,
         predios_cancelados: m2Data.predios_cancelados,
-        predios_inscritos: m2Data.predios_inscritos,
+        predios_inscritos: prediosInscritosApoyo,
         gestor_apoyo_id: gestorApoyoSeleccionado
       }, {
         headers: { Authorization: `Bearer ${token}` }
