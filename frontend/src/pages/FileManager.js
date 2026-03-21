@@ -1017,7 +1017,7 @@ export default function FileManager() {
         {/* Tab Base de Datos */}
         <TabsContent value="database" className="mt-6 space-y-6">
           {/* Estado de la BD */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="border-slate-200">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
@@ -1026,7 +1026,8 @@ export default function FileManager() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Base de Datos</p>
-                    <p className="text-lg font-bold text-slate-900">{dbStatus?.db_name || '-'}</p>
+                    <p className="text-lg font-bold text-slate-900">{dbStatus?.total_size_mb || 0} MB</p>
+                    <p className="text-xs text-slate-400">{dbStatus?.collections_count || 0} colecciones</p>
                   </div>
                 </div>
               </CardContent>
@@ -1038,8 +1039,23 @@ export default function FileManager() {
                     <FolderArchive className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500">Tamaño Total</p>
-                    <p className="text-lg font-bold text-slate-900">{dbStatus?.total_size_mb || 0} MB</p>
+                    <p className="text-sm text-slate-500">Archivos Adjuntos</p>
+                    <p className="text-lg font-bold text-slate-900">{dbStatus?.archivos_adjuntos?.total?.toLocaleString() || 0}</p>
+                    <p className="text-xs text-slate-400">{dbStatus?.archivos_adjuntos?.size_mb || 0} MB</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-amber-100">
+                    <Database className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Tamaño Total Backup</p>
+                    <p className="text-lg font-bold text-slate-900">{((dbStatus?.total_size_mb || 0) + (dbStatus?.archivos_adjuntos?.size_mb || 0)).toLocaleString()} MB</p>
+                    <p className="text-xs text-slate-400">BD + Archivos</p>
                   </div>
                 </div>
               </CardContent>
@@ -1060,6 +1076,46 @@ export default function FileManager() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Indicadores del Sistema */}
+          {dbStatus?.indicadores && (
+            <Card className="border-slate-200">
+              <CardHeader><CardTitle className="text-lg font-outfit">Indicadores del Sistema</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {[
+                    { label: 'Predios', value: dbStatus.indicadores.predios, color: 'emerald' },
+                    { label: 'Predios Actualización', value: dbStatus.indicadores.predios_actualizacion, color: 'blue' },
+                    { label: 'Peticiones', value: dbStatus.indicadores.peticiones, color: 'amber' },
+                    { label: 'Resoluciones', value: dbStatus.indicadores.resoluciones, color: 'purple' },
+                    { label: 'Usuarios', value: dbStatus.indicadores.usuarios, color: 'slate' },
+                    { label: 'Certificados', value: dbStatus.indicadores.certificados, color: 'teal' },
+                    { label: 'Mutaciones', value: dbStatus.indicadores.mutaciones, color: 'orange' },
+                    { label: 'Histórico Predios', value: dbStatus.indicadores.predios_historico, color: 'indigo' },
+                    { label: 'Predios Eliminados', value: dbStatus.indicadores.predios_eliminados, color: 'red' },
+                    { label: 'Construcciones Act.', value: dbStatus.indicadores.construcciones_actualizacion, color: 'cyan' },
+                    { label: 'Geometrías Act.', value: dbStatus.indicadores.geometrias_actualizacion, color: 'lime' },
+                    { label: 'Propuestas Cambio', value: dbStatus.indicadores.propuestas_cambio, color: 'pink' },
+                  ].map(ind => (
+                    <div key={ind.label} className={`p-3 rounded-lg bg-${ind.color}-50 border border-${ind.color}-200`}>
+                      <p className="text-xs text-slate-500">{ind.label}</p>
+                      <p className="text-lg font-bold text-slate-800">{(ind.value || 0).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+                {dbStatus?.archivos_adjuntos?.por_tipo && Object.keys(dbStatus.archivos_adjuntos.por_tipo).length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm font-medium text-slate-600 mb-2">Archivos adjuntos por tipo:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(dbStatus.archivos_adjuntos.por_tipo).map(([ext, count]) => (
+                        <span key={ext} className="px-2 py-1 bg-slate-100 rounded text-xs font-mono">{ext}: {count}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Acciones Rápidas */}
           <Card className="border-slate-200">
@@ -1544,6 +1600,9 @@ export default function FileManager() {
                 <p className="text-sm text-amber-800"><strong>Fecha:</strong> {formatDate(selectedBackup.fecha)}</p>
                 <p className="text-sm text-amber-800"><strong>Colecciones:</strong> {selectedBackup.colecciones_count}</p>
                 <p className="text-sm text-amber-800"><strong>Registros:</strong> {selectedBackup.registros_total?.toLocaleString()}</p>
+                {selectedBackup.archivos_adjuntos > 0 && (
+                  <p className="text-sm text-amber-800"><strong>Archivos adjuntos:</strong> {selectedBackup.archivos_adjuntos} ({selectedBackup.archivos_adjuntos_mb} MB)</p>
+                )}
               </div>
               <p className="text-sm text-slate-600">¿Está seguro de que desea restaurar este backup? Los datos actuales serán reemplazados.</p>
             </div>
@@ -1571,6 +1630,11 @@ export default function FileManager() {
                 <div><span className="text-slate-500">Tamaño:</span><span className="ml-2 font-medium">{previewData.backup_info?.size_mb} MB</span></div>
                 <div><span className="text-slate-500">Creado por:</span><span className="ml-2 font-medium">{previewData.backup_info?.creado_por}</span></div>
               </div>
+              {previewData.archivos_adjuntos && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                  <strong>Archivos adjuntos incluidos:</strong> {previewData.archivos_adjuntos.total} archivos ({previewData.archivos_adjuntos.size_mb} MB)
+                </div>
+              )}
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-100">

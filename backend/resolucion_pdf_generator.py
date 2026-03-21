@@ -23,10 +23,10 @@ def get_default_plantilla():
     return {
         "preambulo": (
             "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
-            "en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
-            "en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "
-            '"por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y '
-            'difusión catastral con enfoque multipropósito", y'
+            "en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en "
+            "concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del "
+            "Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide la resolución única de la "
+            "gestión catastral multipropósito\", y"
         ),
         "considerando_1": "Qué, ante la oficina de gestión catastral de la Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}",
         "considerando_2_intro": "Qué, se aportaron como soportes los siguientes documentos:",
@@ -38,14 +38,14 @@ def get_default_plantilla():
         "considerando_3": "Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional {npn}.",
         "considerando_final": (
             "En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la "
-            'resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, '
-            'actualización, conservación y difusión catastral con enfoque multipropósito", se:'
+            "Resolución 1040 de 2023 del Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide "
+            "la resolución única de la gestión catastral multipropósito\", se:"
         ),
         "articulo_1_intro": "Ordenar la inscripción en el catastro del Municipio de {municipio} los siguientes cambios:",
         "articulo_2": "De conformidad con lo dispuesto en el artículo 4.8.2 de la resolución 1040 de 2023 y el artículo 70 de la ley 1437 de 2011, el presente acto administrativo rige a partir de la fecha de su expedición.",
         "articulo_3": "Los avalúos inscritos con posterioridad al primero de enero tendrán vigencia fiscal para el año siguiente, ajustados con el índice que determine el gobierno nacional, de conformidad a lo expuesto en los artículos 4.7.13 y 4.7.14 de la resolución 1040 de 2023.",
         "articulo_4": "Contra el presente acto administrativo no procede recurso alguno.",
-        "cierre": "COMUNÍQUESE,NOTIFÍQUESEYCÚMPLASE",
+        "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
         "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
         "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
     }

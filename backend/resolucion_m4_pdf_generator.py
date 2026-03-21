@@ -74,11 +74,10 @@ def get_m4_plantilla_revision():
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE REVISIÓN DE AVALÚO",
         "considerando_intro": (
             "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
-            "en calidad de Gestor Catastral, en uso de sus facultades legales "
-            "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
-            "el numeral 07 del artículo 30 del decreto 846 del 29 de julio de 2021, el decreto 148 del 2020 "
-            "y la resolución IGAC 1040 del 2023: \"por la cual se actualiza la reglamentación técnica de la "
-            "formación, actualización, conservación y difusión catastral con enfoque multipropósito\", y"
+            "en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en "
+            "concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del "
+            "Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide la resolución única de la "
+            "gestión catastral multipropósito\", y"
         ),
         "considerando_solicitud": (
             "Qué, el señor {solicitante_nombre}, identificado con cédula de ciudadanía No. {solicitante_documento}, "
@@ -153,11 +152,10 @@ def get_m4_plantilla_autoestimacion():
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE AUTOESTIMACIÓN DE AVALÚO",
         "considerando_intro": (
             "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
-            "en calidad de Gestor Catastral, en uso de sus facultades legales "
-            "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
-            "el numeral 07 del artículo 30 del decreto 846 del 29 de julio de 2021, el decreto 148 del 2020 "
-            "y la resolución IGAC 1040 del 2023: \"por la cual se actualiza la reglamentación técnica de la "
-            "formación, actualización, conservación y difusión catastral con enfoque multipropósito\", y"
+            "en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en "
+            "concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del "
+            "Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide la resolución única de la "
+            "gestión catastral multipropósito\", y"
         ),
         "considerando_solicitud": (
             "Qué, el señor {solicitante_nombre}, identificado con cédula de ciudadanía No. {solicitante_documento}, "
@@ -497,18 +495,21 @@ def generate_resolucion_m4_pdf(data: dict, es_borrador: bool = False) -> bytes:
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
         y_position -= 14
     y_position -= 10
-    
+
+    # ==========================================
+    # PREÁMBULO (antes del CONSIDERANDO)
+    # ==========================================
+    c.setFillColor(NEGRO)
+    dibujar_texto_justificado(plantilla['considerando_intro'])
+    y_position -= 8
+
     # ==========================================
     # CONSIDERANDO
     # ==========================================
-    
+
     dibujar_seccion_titulo("CONSIDERANDO")
     c.setFillColor(NEGRO)
-    
-    # Considerando intro
-    dibujar_texto_justificado(plantilla['considerando_intro'])
-    y_position -= 6
-    
+
     # Usar texto personalizado si está disponible
     if texto_considerando_personalizado:
         # Reemplazar variables en el texto personalizado (usando paréntesis)

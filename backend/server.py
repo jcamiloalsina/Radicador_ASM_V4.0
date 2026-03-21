@@ -28918,15 +28918,56 @@ async def get_database_status(current_user: dict = Depends(get_current_user)):
         })
     
     stats["total_size_mb"] = round(total_size / (1024 * 1024), 2)
-    
+
     # Obtener último backup del historial
     ultimo_backup = await db.backup_history.find_one(
-        {}, 
+        {},
         sort=[("fecha", -1)],
         projection={"_id": 0, "fecha": 1, "tipo": 1}
     )
     stats["ultimo_backup"] = ultimo_backup
-    
+
+    # Indicadores de archivos adjuntos (uploads)
+    uploads_dir = "/app/uploads"
+    try:
+        total_archivos = 0
+        total_archivos_size = 0
+        archivos_por_tipo = {}
+        for root, dirs, files in os.walk(uploads_dir):
+            for fname in files:
+                total_archivos += 1
+                fpath = os.path.join(root, fname)
+                fsize = os.path.getsize(fpath)
+                total_archivos_size += fsize
+                ext = os.path.splitext(fname)[1].lower() or 'sin_ext'
+                archivos_por_tipo[ext] = archivos_por_tipo.get(ext, 0) + 1
+        stats["archivos_adjuntos"] = {
+            "total": total_archivos,
+            "size_mb": round(total_archivos_size / (1024 * 1024), 2),
+            "por_tipo": dict(sorted(archivos_por_tipo.items(), key=lambda x: -x[1]))
+        }
+    except Exception:
+        stats["archivos_adjuntos"] = {"total": 0, "size_mb": 0, "por_tipo": {}}
+
+    # Indicadores clave del sistema
+    try:
+        stats["indicadores"] = {
+            "predios": await db.predios.count_documents({}),
+            "predios_actualizacion": await db.predios_actualizacion.count_documents({}),
+            "peticiones": await db.petitions.count_documents({}),
+            "resoluciones": await db.resoluciones.count_documents({}),
+            "usuarios": await db.users.count_documents({}),
+            "certificados": await db.certificados_verificables.count_documents({}),
+            "mutaciones": await db.peticion_mutaciones.count_documents({}),
+            "predios_historico": await db.predios_historico.count_documents({}),
+            "predios_eliminados": await db.predios_eliminados.count_documents({}),
+            "construcciones_actualizacion": await db.construcciones_actualizacion.count_documents({}),
+            "geometrias_actualizacion": await db.geometrias_actualizacion.count_documents({}),
+            "propuestas_cambio": await db.propuestas_cambio_actualizacion.count_documents({}),
+        }
+    except Exception:
+        stats["indicadores"] = {}
+
     return stats
 
 
@@ -28987,7 +29028,8 @@ def _run_backup_sync(backup_id: str, backup_path: str, backup_info: dict, collec
                 "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "colecciones": collections_to_backup,
                 "total_docs": total_docs,
-                "version": "1.0"
+                "version": "2.0",
+                "incluye_archivos": True
             }
             zipf.writestr("_metadata.json", json.dumps(metadata, indent=2))
 
@@ -29031,6 +29073,40 @@ def _run_backup_sync(backup_id: str, backup_path: str, backup_info: dict, collec
                 zipf.writestr(f"{coll_name}.json", json_data)
                 del docs, json_data
 
+            # Fase 2.5: Incluir archivos adjuntos (uploads)
+            uploads_dir = "/app/uploads"
+            archivos_incluidos = 0
+            archivos_size_total = 0
+            if os.path.exists(uploads_dir):
+                backup_progress[backup_id]["current_collection"] = "Archivos adjuntos (contando...)"
+                backup_progress[backup_id]["progress"] = 91
+
+                # Recopilar lista de archivos
+                archivos_a_incluir = []
+                for root, dirs, files in os.walk(uploads_dir):
+                    for fname in files:
+                        full_path = os.path.join(root, fname)
+                        rel_path = os.path.relpath(full_path, uploads_dir)
+                        archivos_a_incluir.append((full_path, rel_path))
+
+                total_archivos = len(archivos_a_incluir)
+                logging.info(f"Backup {backup_id}: Incluyendo {total_archivos} archivos adjuntos")
+
+                for file_idx, (full_path, rel_path) in enumerate(archivos_a_incluir):
+                    try:
+                        zipf.write(full_path, f"uploads/{rel_path}")
+                        archivos_incluidos += 1
+                        archivos_size_total += os.path.getsize(full_path)
+                    except Exception as fe:
+                        logging.warning(f"No se pudo incluir archivo {rel_path}: {fe}")
+
+                    if (file_idx + 1) % 50 == 0 or file_idx == total_archivos - 1:
+                        pct = 91 + int((file_idx + 1) / max(total_archivos, 1) * 4)
+                        backup_progress[backup_id]["progress"] = min(pct, 95)
+                        backup_progress[backup_id]["current_collection"] = f"Archivos adjuntos ({file_idx + 1}/{total_archivos})"
+
+                logging.info(f"Backup {backup_id}: {archivos_incluidos} archivos incluidos ({archivos_size_total / (1024*1024):.1f} MB)")
+
         # Fase 3: Finalizar
         backup_progress[backup_id]["current_collection"] = "Finalizando..."
         backup_progress[backup_id]["progress"] = 95
@@ -29038,6 +29114,8 @@ def _run_backup_sync(backup_id: str, backup_path: str, backup_info: dict, collec
         file_size = os.path.getsize(backup_path)
         backup_info["size_mb"] = round(file_size / (1024 * 1024), 2)
         backup_info["registros_total"] = total_registros
+        backup_info["archivos_adjuntos"] = archivos_incluidos
+        backup_info["archivos_adjuntos_mb"] = round(archivos_size_total / (1024 * 1024), 2) if archivos_size_total else 0
         backup_info["estado"] = "completado"
 
         # Guardar en historial (síncrono)
@@ -29248,6 +29326,25 @@ async def restore_backup(
                         "count": len(docs)
                     })
         
+        # Restaurar archivos adjuntos si existen en el backup
+        archivos_restaurados = 0
+        with zipfile.ZipFile(backup_path, 'r') as zipf:
+            archivos_en_backup = [f for f in zipf.namelist() if f.startswith("uploads/")]
+            if archivos_en_backup:
+                uploads_dir = "/app/uploads"
+                for archivo in archivos_en_backup:
+                    rel_path = archivo[len("uploads/"):]  # quitar prefijo "uploads/"
+                    if not rel_path:
+                        continue
+                    dest_path = os.path.join(uploads_dir, rel_path)
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    try:
+                        with zipf.open(archivo) as src, open(dest_path, 'wb') as dst:
+                            dst.write(src.read())
+                        archivos_restaurados += 1
+                    except Exception as fe:
+                        logging.warning(f"No se pudo restaurar archivo {rel_path}: {fe}")
+
         # Registrar la restauración en el historial
         await db.backup_history.update_one(
             {"id": backup_id},
@@ -29255,16 +29352,18 @@ async def restore_backup(
                 "restauraciones": {
                     "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "usuario": current_user['full_name'],
-                    "colecciones": [c['name'] for c in restored_collections]
+                    "colecciones": [c['name'] for c in restored_collections],
+                    "archivos_restaurados": archivos_restaurados
                 }
             }}
         )
-        
+
         return {
             "success": True,
-            "message": "Backup restaurado exitosamente",
+            "message": f"Backup restaurado exitosamente ({archivos_restaurados} archivos adjuntos incluidos)",
             "colecciones_restauradas": restored_collections,
-            "total_registros": total_restored
+            "total_registros": total_restored,
+            "archivos_restaurados": archivos_restaurados
         }
         
     except Exception as e:
@@ -29316,7 +29415,16 @@ async def preview_backup(backup_id: str, current_user: dict = Depends(get_curren
                     "name": coll_name,
                     "count": len(docs)
                 })
-        
+
+            # Contar archivos adjuntos en el backup
+            archivos_en_backup = [f for f in zipf.namelist() if f.startswith("uploads/") and not f.endswith("/")]
+            if archivos_en_backup:
+                archivos_size = sum(zipf.getinfo(f).file_size for f in archivos_en_backup)
+                preview["archivos_adjuntos"] = {
+                    "total": len(archivos_en_backup),
+                    "size_mb": round(archivos_size / (1024 * 1024), 2)
+                }
+
         return preview
         
     except Exception as e:
@@ -29525,8 +29633,8 @@ async def ejecutar_backup_automatico():
             }}
         )
         
-        # Limpiar backups antiguos según retención
-        await limpiar_backups_por_retencion(config.get("retener_ultimos", 7))
+        # Limpiar backups antiguos según retención (máx 2 en disco para no acumular)
+        await limpiar_backups_por_retencion(config.get("retener_ultimos", 2))
         
         logging.info("=" * 60)
         logging.info(f"✅ BACKUP AUTOMÁTICO COMPLETADO: {backup_filename}")
@@ -29724,7 +29832,7 @@ async def limpiar_backups_antiguos(current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=403, detail="Solo administradores pueden limpiar backups")
     
     config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
-    retener = config.get("retener_ultimos", 7) if config else 7
+    retener = config.get("retener_ultimos", 2) if config else 2
     
     # Obtener todos los backups ordenados por fecha
     all_backups = await db.backup_history.find(
@@ -30342,10 +30450,11 @@ def get_plantilla_default() -> dict:
     """Retorna la plantilla por defecto para resoluciones"""
     return {
         "preambulo": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "(ASOMUNICIPIOS), actuando en calidad de Gestor Catastral, en concordancia con la "
-            "ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1204 del 2021, en uso "
-            "de sus facultades legales y,"
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en "
+            "concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del "
+            "Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide la resolución única de la "
+            "gestión catastral multipropósito\", y"
         ),
         "considerando_1": "Que, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}.",
         "considerando_2_docs": [
@@ -30356,8 +30465,8 @@ def get_plantilla_default() -> dict:
         "considerando_3": "Que, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con código catastral anterior número {codigo_catastral} y NPN {npn}.",
         "considerando_final": (
             "En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, "
-            "amparados en la resolución IGAC 1040 del 2023: 'por la cual se actualiza la reglamentación "
-            "técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito', se:"
+            "amparados en la Resolución 1040 de 2023 del Instituto Geográfico Agustín Codazzi \"Por medio de la cual "
+            "se expide la resolución única de la gestión catastral multipropósito\", se:"
         ),
         "articulo_2": "El presente acto administrativo rige a partir de la fecha de su expedición.",
         "articulo_3": "Los avalúos incorporados tienen vigencia fiscal a partir del {vigencia_fiscal}.",
@@ -30798,7 +30907,7 @@ async def generar_resolucion_prueba(
 # ===== SISTEMA SIMPLIFICADO DE PLANTILLAS DE RESOLUCIÓN =====
 
 # Plantilla M1 por defecto (Mutación Primera - Cambio de Propietario)
-PLANTILLA_M1_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito", y
+PLANTILLA_M1_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del Instituto Geográfico Agustín Codazzi "Por medio de la cual se expide la resolución única de la gestión catastral multipropósito", y
 
 C O N S I D E R A N D O
 
@@ -30811,7 +30920,7 @@ Qué, se aportaron como soportes los siguientes documentos:
 
 Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional {npn}.
 
-En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito", se:
+En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la Resolución 1040 de 2023 del Instituto Geográfico Agustín Codazzi "Por medio de la cual se expide la resolución única de la gestión catastral multipropósito", se:
 
 RESUELVE
 
@@ -30825,7 +30934,7 @@ ARTÍCULO 3. Los avalúos inscritos con posterioridad al primero de enero tendr�
 
 ARTÍCULO 4. Contra el presente acto administrativo no procede recurso alguno.
 
-COMUNÍQUESE,NOTIFÍQUESEYCÚMPLASE
+COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE
 
 Dada en Ocaña a los {fecha_resolucion_texto}"""
 

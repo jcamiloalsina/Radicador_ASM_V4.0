@@ -673,20 +673,24 @@ def generate_resolucion_m3_pdf(
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
         y_position -= 14
     y_position -= 6
-    
+
+    # ==========================================
+    # PREÁMBULO (antes del CONSIDERANDO)
+    # ==========================================
+    c.setFillColor(NEGRO)
+    dibujar_texto_justificado(plantilla["preambulo"], font_size=10, line_height=13)
+    y_position -= 8
+
     # ==========================================
     # CONSIDERANDO
     # ==========================================
-    
+
     verificar_espacio(30)
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, "CONSIDERANDO")
     y_position -= 14
     c.setFillColor(NEGRO)
-    
-    dibujar_texto_justificado(plantilla["preambulo"], font_size=10, line_height=13)
-    y_position -= 6
-    
+
     # Usar texto personalizado si está disponible, sino usar plantilla estándar
     if texto_considerando_personalizado:
         # Reemplazar variables en el texto personalizado (usando paréntesis)

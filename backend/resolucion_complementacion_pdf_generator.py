@@ -72,11 +72,10 @@ def get_complementacion_plantilla():
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE COMPLEMENTACIÓN DE INFORMACIÓN",
         "considerando_intro": (
             "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
-            "en calidad de Gestor Catastral, en uso de sus facultades legales "
-            "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
-            "el literal c del artículo 2.2.2.2.2 del decreto 148 del 2020 y la resolución IGAC 1040 del 2023: "
-            "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, "
-            "conservación y difusión catastral con enfoque multipropósito\", y"
+            "en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en "
+            "concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del "
+            "Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide la resolución única de la "
+            "gestión catastral multipropósito\", y"
         ),
         "considerando_solicitud": (
             "Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de "
@@ -681,11 +680,18 @@ def generar_resolucion_complementacion_pdf(data: dict, es_borrador: bool = False
     y_position -= 8
 
     # ==========================================
+    # PREÁMBULO (antes del CONSIDERANDO)
+    # ==========================================
+    c.setFillColor(NEGRO)
+    dibujar_texto_justificado(plantilla["considerando_intro"])
+    y_position -= 8
+
+    # ==========================================
     # CONSIDERANDOS
     # ==========================================
     dibujar_seccion_titulo("CONSIDERANDO:")
     y_position -= 3
-    
+
     # Si hay texto personalizado de considerandos, usarlo
     if texto_considerando_personalizado:
         texto_procesado = texto_considerando_personalizado
@@ -716,8 +722,6 @@ def generar_resolucion_complementacion_pdf(data: dict, es_borrador: bool = False
     else:
         # Usar plantilla estándar
         c.setFillColor(NEGRO)
-        dibujar_texto_justificado(plantilla["considerando_intro"])
-        y_position -= 6
 
         # Solicitud
         texto_solicitud = plantilla["considerando_solicitud"].format(radicado=radicado)
