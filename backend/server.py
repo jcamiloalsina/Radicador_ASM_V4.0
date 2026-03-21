@@ -10322,24 +10322,34 @@ async def import_predios_excel(
         # 3. INSERTAR TODOS los predios del Excel
         predios_list = list(r1_data.values())
         predios_con_historial_transferido = 0
-        
+        predios_homologado_asignado = 0
+
         for predio in predios_list:
             cnp = predio.get('codigo_predial_nacional')
-            
+
             # Transferir historial_resoluciones si el CNP coincide
             if cnp and cnp in historiales_resoluciones_por_cnp:
                 predio['historial_resoluciones'] = historiales_resoluciones_por_cnp[cnp]
                 predios_con_historial_transferido += 1
                 logger.debug(f"[Import] Transferido historial de resoluciones a CNP {cnp}")
-            
+
             # Marcar como NO creado/editado en plataforma (viene del Excel)
             predio['creado_en_plataforma'] = False
             predio['area_editada_en_plataforma'] = False
-        
+
+            # Asignar código homologado si viene vacío
+            if not predio.get('codigo_homologado') or not predio['codigo_homologado'].strip():
+                codigo_asignado = await asignar_codigo_homologado(municipio, predio.get('id'))
+                if codigo_asignado:
+                    predio['codigo_homologado'] = codigo_asignado
+                    predios_homologado_asignado += 1
+                else:
+                    logger.warning(f"[Import] No hay códigos homologados disponibles para {municipio}, predio CNP {cnp}")
+
         if predios_list:
             await db.predios.insert_many(predios_list)
-        
-        logger.info(f"[Import] Insertados {len(predios_list)} predios, {predios_con_historial_transferido} con historial transferido")
+
+        logger.info(f"[Import] Insertados {len(predios_list)} predios, {predios_con_historial_transferido} con historial transferido, {predios_homologado_asignado} con homologado asignado")
 
         # ========== ACTUALIZAR SOLICITUDES PENDIENTES CON NUEVOS predio_id ==========
         # Cuando se re-importa una vigencia, los predios obtienen nuevos IDs.
@@ -10415,11 +10425,27 @@ async def import_predios_excel(
         
         # ========== FIN VERIFICACIÓN ==========
         
+        # Sincronizar códigos homologados: marcar como usados los que están en predios
+        try:
+            codigos_en_predios = await db.predios.distinct("codigo_homologado", {
+                "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+                "codigo_homologado": {"$exists": True, "$ne": "", "$ne": None}
+            })
+            if codigos_en_predios:
+                sync_result = await db.codigos_homologados.update_many(
+                    {"codigo": {"$in": codigos_en_predios}, "usado": False},
+                    {"$set": {"usado": True, "estado": "usado", "fecha_asignacion": datetime.now(COLOMBIA_TZ).isoformat()}}
+                )
+                if sync_result.modified_count > 0:
+                    logger.info(f"[Import] Sincronizados {sync_result.modified_count} códigos homologados como usados")
+        except Exception as e:
+            logger.error(f"[Import] Error sincronizando códigos homologados: {e}")
+
         # Calcular predios nuevos (CNP que no estaban en ninguna vigencia anterior)
         predios_nuevos_count = len(new_codigos - all_previous_cnp)
-        
+
         # Registrar importación
-        logger.info(f"Import stats: rows_read={rows_read}, unique_predios={len(r1_data)}, municipio={municipio}")
+        logger.info(f"Import stats: rows_read={rows_read}, unique_predios={len(r1_data)}, municipio={municipio}, homologados_asignados={predios_homologado_asignado}")
         await db.importaciones.insert_one({
             "id": str(uuid.uuid4()),
             "municipio": municipio,
@@ -10430,6 +10456,7 @@ async def import_predios_excel(
             "predios_nuevos": predios_nuevos_count,
             "predios_areas_respaldados": len(predios_areas_modificadas),
             "predios_historial_transferido": predios_con_historial_transferido,
+            "predios_homologado_asignado": predios_homologado_asignado,
             "archivo": file.filename,
             "importado_por": current_user['id'],
             "importado_por_nombre": current_user['full_name'],
@@ -10472,6 +10499,7 @@ async def import_predios_excel(
             "predios_importados": len(predios_list),
             "predios_areas_respaldados": len(predios_areas_modificadas),
             "predios_historial_transferido": predios_con_historial_transferido,
+            "predios_homologado_asignado": predios_homologado_asignado,
             "predios_anteriores": len(existing_predios_vigencia_actual),
             "predios_eliminados": predios_eliminados_count,
             "predios_nuevos": predios_nuevos_count,
